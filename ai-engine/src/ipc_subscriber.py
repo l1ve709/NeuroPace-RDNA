@@ -117,13 +117,20 @@ class IpcSubscriber:
         if not self._connected or self._handle is None:
             return []
         try:
+            # Prevent blocking infinitely if no data is available,
+            # allowing Python signals (SIGINT) to interrupt the loop safely.
+            _, bytes_avail, _ = win32pipe.PeekNamedPipe(self._handle, 0)
+            if bytes_avail == 0:
+                time.sleep(0.01) # Sleep 10ms to prevent CPU spinning
+                return []
+
             hr, data = win32file.ReadFile(
                 self._handle,
-                self._config.read_buffer_size,
+                min(bytes_avail, self._config.read_buffer_size),
             )
             if hr != 0:
                 logger.warning("ReadFile returned non-zero HRESULT: %d", hr)
-                self._handle_disconnect()
+                self.disconnect()
                 return []
             if not data:
                 return []
@@ -136,10 +143,11 @@ class IpcSubscriber:
             return frames
         except pywintypes.error as e:
             if e.winerror in (ERROR_BROKEN_PIPE, ERROR_NO_DATA):
-                logger.warning("Telemetry pipe broken — server disconnected")
+                # Pipe cleanly broken
+                self.disconnect()
             else:
                 logger.error("Pipe read error: [%d] %s", e.winerror, e.strerror)
-            self._handle_disconnect()
+                self.disconnect()
             return []
     def stream(self) -> Generator[dict, None, None]:
         """

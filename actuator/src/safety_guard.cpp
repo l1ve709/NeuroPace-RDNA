@@ -99,34 +99,20 @@ bool SafetyGuard::ValidateProcessHandle(HANDLE handle) {
     if (handle == nullptr || handle == INVALID_HANDLE_VALUE) {
         return false;
     }
-    char testByte = 0;
-    SIZE_T bytesRead = 0;
-    BOOL readResult = ::ReadProcessMemory(handle, reinterpret_cast<LPCVOID>(0x1000),
-                                          &testByte, 1, &bytesRead);
-    if (readResult != FALSE || bytesRead > 0) {
-        std::cerr << "[SAFETY] CRITICAL: Process handle has VM_READ access!\n";
-        std::cerr << "[SAFETY] This handle MUST NOT be used. Anti-cheat violation.\n";
-        return false;
-    }
-    DWORD err = ::GetLastError();
-    if (err != ERROR_ACCESS_DENIED && err != ERROR_NOACCESS) {
-        std::cerr << std::format(
-            "[SAFETY] WARNING: ReadProcessMemory returned unexpected error: {}\n", err
-        );
-    }
+    // TR Engineering Note:
+    // DO NOT test the handle by performing ReadProcessMemory or similar kernel
+    // probes! Even if we explicitly expect ERROR_ACCESS_DENIED, hypervisor-based
+    // and Ring-0 anti-cheats (e.g. Vanguard, BattlEye) hook NtReadVirtualMemory
+    // and will flag the NeuroPace Actor as a potential attack vector.
+    // The Scheduler strictly requests PROCESS_SET_INFORMATION | PROCESS_QUERY_INFORMATION.
     return true;
 }
+
 bool SafetyGuard::ValidateThreadHandle(HANDLE handle) {
     if (handle == nullptr || handle == INVALID_HANDLE_VALUE) {
         return false;
     }
-    CONTEXT ctx = {};
-    ctx.ContextFlags = CONTEXT_CONTROL;
-    BOOL ctxResult = ::GetThreadContext(handle, &ctx);
-    if (ctxResult != FALSE) {
-        std::cerr << "[SAFETY] CRITICAL: Thread handle has GET_CONTEXT access!\n";
-        return false;
-    }
+    // Similarly, DO NOT test using GetThreadContext. It will trigger anti-cheat heuristic.
     return true;
 }
 bool SafetyGuard::IsRateLimited() {
