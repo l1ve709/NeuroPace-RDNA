@@ -178,11 +178,11 @@ NeuroPace-RDNA-v0.1.0-Win64.zip
 │   └── neuropace-actuator.exe
 ├── scripts/         # Prediction engine
 ├── models/          # Pre-trained ONNX model
-├── start_neuropace.bat
+├── NeuroPace-ControlCenter.exe # GUI Launcher
 └── README.md
 ```
 
-Run `start_neuropace.bat` as Administrator.
+Run `NeuroPace-ControlCenter.exe` as Administrator.
 
 ### Option 2: Build From Source
 
@@ -213,8 +213,8 @@ pip install -r ai-engine/requirements.txt
 ### Run
 
 ```powershell
-# Terminal 1 — Telemetry (requires Admin for ETW)
-.\telemetry\build\Release\neuropace-telemetry.exe
+# Terminal 1 — Control Center (requires Admin for ETW)
+.\releases\NeuroPace-RDNA-v0.1.0\NeuroPace-ControlCenter.exe
 
 # Terminal 2 — Prediction Engine
 python ai-engine/src/main.py
