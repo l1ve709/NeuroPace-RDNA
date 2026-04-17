@@ -7,7 +7,7 @@
 *The world's first predictive latency management layer for gaming PCs.*
 
 [![Platform](https://img.shields.io/badge/Platform-Windows%2010%2F11-0078D6?style=flat-square&logo=windows)](https://www.microsoft.com/windows)
-[![Architecture](https://img.shields.io/badge/GPU-AMD%20Radeon-ED1C24?style=flat-square&logo=amd)](https://www.amd.com/en/graphics)
+[![Architecture](https://img.shields.io/badge/GPU-AMD%20Radeon-ED1C24?style=flat-square&logo=amd)](https://www.amd.com/en/products/graphics)
 [![C++](https://img.shields.io/badge/C%2B%2B-20-00599C?style=flat-square&logo=cplusplus)](https://isocpp.org/)
 [![License](https://img.shields.io/badge/License-Proprietary-333333?style=flat-square)]()
 [![Release](https://img.shields.io/badge/Release-v0.1.0--beta-blue?style=flat-square)]()
