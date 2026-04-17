@@ -48,4 +48,4 @@ See `docs/BUILDING.md` for specific vcpkg and CMake execution commands.
 
 ## License
 
-Copyright © 2026 NeuroPace Engineering. All rights reserved.
+Copyright © Ediz Sönmez 2026 NeuroPace Engineering. All rights reserved.
