@@ -113,3 +113,5 @@ presentmon --output_file baseline.csv --terminate_after_timed 600
 ---
 
 *All benchmarks performed by NeuroPace Engineering. Results may vary based on hardware configuration, driver version, and game settings.*
+
+<!-- Benchmark validation session -->
