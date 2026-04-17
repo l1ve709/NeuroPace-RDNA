@@ -188,10 +188,8 @@ We take system security seriously. NeuroPace operates purely in User-Mode (Ring-
 | `bin\neuropace-actuator.exe` | `78EDEA3939A0EFF53CD793077EAF632B538281B3013C1CA96448B66F6EF8BE2D` |
 | `NeuroPace.exe` (Launcher) | `E8FA96773F3F65CE4C49F03F44B400AB3200EC01C81167DA2CF10D4965BD21E4` |
 
-### VirusTotal Analysis
-* [neuropace-telemetry.exe Analysis](https://www.virustotal.com/gui/file/89813406ACD5B47F493DA00026702DD51D6BA8B342B227CE0EC01DA48733FBE8)
-* [neuropace-actuator.exe Analysis](https://www.virustotal.com/gui/file/78EDEA3939A0EFF53CD793077EAF632B538281B3013C1CA96448B66F6EF8BE2D)
-* [NeuroPace.exe Analysis](https://www.virustotal.com/gui/file/E8FA96773F3F65CE4C49F03F44B400AB3200EC01C81167DA2CF10D4965BD21E4)
+### Verifying with VirusTotal
+Since these binaries are freshly compiled and not signed with an EV certificate, they may not be indexed on [VirusTotal](https://www.virustotal.com/) yet. You can upload any of the files above directly to VirusTotal to verify they are 100% clean. The resulting analysis will match the SHA-256 hashes provided above.
 
 ## Quick Start
 
