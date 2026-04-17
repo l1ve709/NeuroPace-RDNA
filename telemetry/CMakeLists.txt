@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.25)
 project(NeuroPace_Telemetry
     VERSION     0.1.0
-    LANGUAGES   CXX
+    LANGUAGES   C CXX
     DESCRIPTION "NeuroPace RDNA — Telemetry & Sensor Module"
 )
 
@@ -47,6 +47,11 @@ set(TELEMETRY_SOURCES
     src/ipc_publisher.cpp
 )
 
+if(NEUROPACE_USE_ADLX AND ADLX_SDK_DIR)
+    list(APPEND TELEMETRY_SOURCES "${ADLX_SDK_DIR}/SDK/ADLXHelper/Windows/C/ADLXHelper.c")
+    list(APPEND TELEMETRY_SOURCES "${ADLX_SDK_DIR}/SDK/Platform/Windows/WinAPIs.c")
+endif()
+
 # ── Executable ──────────────────────────────────────────────────
 add_executable(neuropace-telemetry ${TELEMETRY_SOURCES})
 
@@ -57,6 +62,7 @@ target_include_directories(neuropace-telemetry PRIVATE
 if(ADLX_FOUND)
     target_include_directories(neuropace-telemetry PRIVATE
         ${ADLX_SDK_DIR}/SDK/Include
+        ${ADLX_SDK_DIR}/SDK/ADLXHelper/Windows/C
     )
     target_compile_definitions(neuropace-telemetry PRIVATE NEUROPACE_HAS_ADLX=1)
 endif()

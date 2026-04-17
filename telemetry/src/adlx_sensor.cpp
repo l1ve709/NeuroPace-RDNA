@@ -1,204 +1,226 @@
 #include "adlx_sensor.h"
 #include <iostream>
-#include <format>
-#include <random>
+#include <vector>
+#include <string>
+#include <algorithm>
 #include <cmath>
+#include <random>
+#include <mutex>
+#include <shared_mutex>
+
 #ifdef NEUROPACE_HAS_ADLX
-    #include "ADLX.h"
-    #include "IPerformanceMonitoring.h"
-    #include "IGPUTuning.h"
-    #include "ADLXHelper.h"
-    using namespace adlx;
-#endif
-namespace neuropace {
-AdlxSensor::AdlxSensor(const AdlxConfig& config)
-    : m_config(config)
-{
+// ADLX headers - Order and dependency logic
+#include "ADLX.h"
+#include "ISystem.h"
+#include "IPerformanceMonitoring.h"
+
+extern "C" {
+#include "ADLXHelper.h"
 }
+
+// Internal casting helpers
+using namespace adlx;
+#endif
+
+namespace neuropace {
+
+AdlxSensor::AdlxSensor(const AdlxConfig& config)
+    : m_config(config), m_running(false), m_adlxAvailable(false) {
+}
+
 AdlxSensor::~AdlxSensor() {
     Stop();
+    Shutdown();
 }
+
 bool AdlxSensor::Initialize() {
 #ifdef NEUROPACE_HAS_ADLX
-    auto* helper = new ADLXHelper();
-    ADLX_RESULT res = helper->Initialize();
+    ADLX_RESULT res = ADLXHelper_Initialize();
     if (ADLX_FAILED(res)) {
-        delete helper;
-        SetError(std::format("ADLX Initialize failed: error code {}", static_cast<int>(res)));
-        m_adlxAvailable = false;
-        std::cout << "[ADLX] SDK init failed — falling back to mock data\n";
-        return true; 
-    }
-    IADLXSystem* sys = helper->GetSystemServices();
-    if (!sys) {
-        delete helper;
-        SetError("Failed to get ADLX system services");
-        m_adlxAvailable = false;
-        return true;
-    }
-    IADLXPerformanceMonitoringServices* perfSvc = nullptr;
-    res = sys->GetPerformanceMonitoringServices(&perfSvc);
-    if (ADLX_FAILED(res) || !perfSvc) {
-        delete helper;
-        SetError("Failed to get ADLX performance monitoring services");
-        m_adlxAvailable = false;
-        return true;
-    }
-    IADLXGPUList* gpuList = nullptr;
-    res = sys->GetGPUs(&gpuList);
-    if (ADLX_FAILED(res) || !gpuList || gpuList->Size() == 0) {
-        delete helper;
-        SetError("No AMD GPU found via ADLX");
-        m_adlxAvailable = false;
-        return true;
-    }
-    IADLXGPU* gpu = nullptr;
-    gpuList->At(0, &gpu);
-    const char* gpuName = nullptr;
-    if (gpu && ADLX_SUCCEEDED(gpu->Name(&gpuName))) {
-        m_gpuName = gpuName;
-    }
-    m_adlxHelper  = helper;
-    m_perfService = perfSvc;
-    m_targetGpu   = gpu;
-    m_adlxAvailable = true;
-    std::cout << std::format("[ADLX] Connected to: {}\n", m_gpuName);
-#else
-    m_adlxAvailable = false;
-    m_gpuName = "AMD Radeon RX 7900 XTX (Mock)";
-    std::cout << "[ADLX] SDK not available — using mock GPU telemetry\n";
-#endif
-    return true;
-}
-bool AdlxSensor::Start() {
-    if (m_running.load()) {
-        SetError("ADLX sensor already running");
+        SetError("ADLX Helper initialization failed");
         return false;
     }
-    m_running.store(true);
+
+    IADLXSystem* sys = ADLXHelper_GetSystemServices();
+    if (!sys) {
+        SetError("Failed to get ADLX System Services");
+        return false;
+    }
+
+    IADLXGPUListPtr gpus;
+    res = sys->GetGPUs(&gpus);
+    if (ADLX_FAILED(res) || gpus->Size() == 0) {
+        SetError("No AMD GPUs detected via ADLX");
+        return false;
+    }
+
+    // Get the primary GPU
+    IADLXGPU* gpu = nullptr;
+    gpus->At(0, &gpu);
+    m_targetGpu = static_cast<void*>(gpu);
+    
+    const char* gpuNameStr = nullptr;
+    if (ADLX_SUCCEEDED(gpu->Name(&gpuNameStr))) {
+        m_gpuName = gpuNameStr;
+    }
+
+    IADLXPerformanceMonitoringServices* perf = nullptr;
+    res = sys->GetPerformanceMonitoringServices(&perf);
+    if (ADLX_FAILED(res)) {
+        SetError("Performance monitoring services not available");
+        return false;
+    }
+    m_perfService = static_cast<void*>(perf);
+
+    m_adlxAvailable = true;
+    std::cout << "[ADLX] " << m_gpuName << " initialized for telemetry." << std::endl;
+    return true;
+#else
+    m_gpuName = "Mock-RDNA3-GPU";
+    m_adlxAvailable = true;
+    std::cout << "[ADLX] Mock sensor initialized." << std::endl;
+    return true;
+#endif
+}
+
+void AdlxSensor::Shutdown() {
+#ifdef NEUROPACE_HAS_ADLX
+    if (m_perfService) {
+        static_cast<IADLXPerformanceMonitoringServices*>(m_perfService)->Release();
+        m_perfService = nullptr;
+    }
+    if (m_targetGpu) {
+        static_cast<IADLXGPU*>(m_targetGpu)->Release();
+        m_targetGpu = nullptr;
+    }
+    ADLXHelper_Terminate();
+#endif
+    m_adlxAvailable = false;
+}
+
+bool AdlxSensor::Start() {
+    if (m_running.exchange(true)) return true;
+
     m_pollThread = std::thread(&AdlxSensor::PollLoop, this);
-    std::cout << std::format("[ADLX] Polling started @ {}ms interval\n", m_config.poll_interval_ms);
     return true;
 }
+
 void AdlxSensor::Stop() {
-    m_running.store(false);
+    if (!m_running.exchange(false)) return;
+
     if (m_pollThread.joinable()) {
         m_pollThread.join();
     }
-#ifdef NEUROPACE_HAS_ADLX
-    if (m_adlxHelper) {
-        auto* helper = static_cast<ADLXHelper*>(m_adlxHelper);
-        helper->Terminate();
-        delete helper;
-        m_adlxHelper  = nullptr;
-        m_perfService = nullptr;
-        m_targetGpu   = nullptr;
-    }
-#endif
-    std::cout << "[ADLX] Sensor stopped\n";
 }
-GpuMetrics AdlxSensor::GetLatestMetrics() const {
-    std::shared_lock lock(m_metricsMutex);
-    return m_latestMetrics;
-}
-std::string AdlxSensor::GetGpuName() const {
-    return m_gpuName;
-}
-std::string AdlxSensor::GetLastError() const {
-    std::shared_lock lock(m_errorMutex);
-    return m_lastError;
-}
+
 void AdlxSensor::PollLoop() {
-    using clock = std::chrono::steady_clock;
     while (m_running.load()) {
-        auto start = clock::now();
-        GpuMetrics metrics;
-        if (m_adlxAvailable) {
-            metrics = ReadAdlxMetrics();
-        } else {
-            metrics = GenerateMockMetrics();
-        }
+        GpuMetrics metrics = ReadAdlxMetrics();
+        
         {
             std::unique_lock lock(m_metricsMutex);
             m_latestMetrics = metrics;
         }
-        auto elapsed = clock::now() - start;
-        auto target  = std::chrono::milliseconds(m_config.poll_interval_ms);
-        if (elapsed < target) {
-            std::this_thread::sleep_for(target - elapsed);
-        }
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(m_config.poll_interval_ms));
     }
 }
+
 GpuMetrics AdlxSensor::ReadAdlxMetrics() {
-    GpuMetrics metrics;
 #ifdef NEUROPACE_HAS_ADLX
-    auto* perfSvc = static_cast<IADLXPerformanceMonitoringServices*>(m_perfService);
-    auto* gpu     = static_cast<IADLXGPU*>(m_targetGpu);
-    if (!perfSvc || !gpu) return metrics;
-    IADLXGPUMetrics* gpuMetrics = nullptr;
-    IADLXGPUMetricsList* metricsList = nullptr;
-    ADLX_RESULT res = perfSvc->GetCurrentGPUMetrics(gpu, &metricsList);
-    if (ADLX_FAILED(res) || !metricsList || metricsList->Size() == 0) {
+    if (!m_adlxAvailable) return GenerateMockMetrics();
+
+    GpuMetrics metrics;
+    // Note: gpu_name is NOT a member of GpuMetrics struct
+
+    auto* perf = static_cast<IADLXPerformanceMonitoringServices*>(m_perfService);
+    auto* gpu = static_cast<IADLXGPU*>(m_targetGpu);
+    if (!perf || !gpu) return metrics;
+
+    IADLXGPUMetricsPtr adlxMetrics;
+    if (ADLX_FAILED(perf->GetCurrentGPUMetrics(gpu, &adlxMetrics))) {
         return metrics;
     }
-    metricsList->At(0, &gpuMetrics);
-    if (!gpuMetrics) return metrics;
-    adlx_int clockMHz = 0, memClockMHz = 0, tempC = 0, hotspotC = 0;
-    adlx_int tgpW = 0, fanRpm = 0;
-    adlx_int vramUsedMB = 0;
-    adlx_double utilPct = 0.0;
-    gpuMetrics->GPUClockSpeed(&clockMHz);
-    gpuMetrics->GPUVRAMClockSpeed(&memClockMHz);
-    gpuMetrics->GPUTemperature(&tempC);
-    gpuMetrics->GPUHotspotTemperature(&hotspotC);
-    gpuMetrics->GPUTotalBoardPower(&tgpW);
-    gpuMetrics->GPUUsage(&utilPct);
-    gpuMetrics->GPUFanSpeed(&fanRpm);
-    gpuMetrics->GPUVRAMUsed(&vramUsedMB);
-    metrics.gpu_clock_mhz      = static_cast<uint32_t>(clockMHz);
-    metrics.mem_clock_mhz      = static_cast<uint32_t>(memClockMHz);
-    metrics.gpu_temp_c         = static_cast<uint32_t>(tempC);
-    metrics.hotspot_temp_c     = static_cast<uint32_t>(hotspotC);
-    metrics.gpu_tgp_w          = static_cast<uint32_t>(tgpW);
-    metrics.vram_used_mb       = static_cast<uint64_t>(vramUsedMB);
-    adlx_size vramTotal = 0;
+
+    adlx_int clock = 0;
+    adlx_int memClock = 0;
+    adlx_double temp = 0;
+    adlx_double hotspot = 0;
+    adlx_double power = 0;
+    adlx_double util = 0;
+    adlx_int fan = 0;
+    adlx_int vramMB = 0;
+
+    adlxMetrics->GPUClockSpeed(&clock);
+    adlxMetrics->GPUVRAMClockSpeed(&memClock);
+    adlxMetrics->GPUTemperature(&temp);
+    adlxMetrics->GPUHotspotTemperature(&hotspot);
+    adlxMetrics->GPUTotalBoardPower(&power);
+    adlxMetrics->GPUUsage(&util);
+    adlxMetrics->GPUFanSpeed(&fan);
+    adlxMetrics->GPUVRAM(&vramMB);
+
+    metrics.gpu_clock_mhz = static_cast<uint32_t>(clock);
+    metrics.mem_clock_mhz = static_cast<uint32_t>(memClock);
+    metrics.gpu_temp_c = static_cast<uint32_t>(temp);
+    metrics.hotspot_temp_c = static_cast<uint32_t>(hotspot);
+    metrics.gpu_tgp_w = static_cast<uint32_t>(power);
+    metrics.gpu_utilization_pct = util;
+    metrics.fan_speed_rpm = static_cast<uint32_t>(fan);
+    metrics.vram_used_mb = static_cast<uint64_t>(vramMB);
+
+    adlx_uint vramTotal = 0;
     if (ADLX_SUCCEEDED(gpu->TotalVRAM(&vramTotal))) {
         metrics.vram_total_mb = static_cast<uint64_t>(vramTotal);
-    } else {
-        metrics.vram_total_mb = 24576; 
     }
-    metrics.gpu_utilization_pct = utilPct;
-    metrics.fan_speed_rpm      = static_cast<uint32_t>(fanRpm);
-#endif
+
     return metrics;
+#else
+    return GenerateMockMetrics();
+#endif
 }
+
 GpuMetrics AdlxSensor::GenerateMockMetrics() {
     thread_local std::mt19937 rng(42);
     thread_local uint64_t tick = 0;
     ++tick;
+
     const double time_s = static_cast<double>(tick) * m_config.poll_interval_ms / 1000.0;
-    const double load_cycle = 0.94 + 0.04 * std::sin(time_s * 0.5);
-    std::normal_distribution<double> noise(0.0, 0.5);
-    std::normal_distribution<double> temp_noise(0.0, 0.3);
-    std::normal_distribution<double> power_noise(0.0, 2.0);
+    const double load_cycle = 0.9 + 0.1 * std::sin(time_s * 0.2);
+
+    std::uniform_real_distribution<double> dist(-1.0, 1.0);
+    double jitter = dist(rng);
+
     GpuMetrics m;
-    m.gpu_utilization_pct = std::clamp(load_cycle * 100.0 + noise(rng), 0.0, 100.0);
-    const double base_clock = 2500.0 + 60.0 * std::sin(time_s * 0.3);
-    m.gpu_clock_mhz = static_cast<uint32_t>(std::clamp(base_clock + noise(rng) * 10, 2200.0, 2620.0));
-    m.mem_clock_mhz = 1250;
-    const double temp = 70.0 + 8.0 * std::sin(time_s * 0.1) + temp_noise(rng);
-    m.gpu_temp_c     = static_cast<uint32_t>(std::clamp(temp, 55.0, 95.0));
-    m.hotspot_temp_c = static_cast<uint32_t>(std::clamp(temp + 12.0 + temp_noise(rng), 60.0, 110.0));
-    const double power = 310.0 + 25.0 * std::sin(time_s * 0.4) + power_noise(rng);
-    m.gpu_tgp_w = static_cast<uint32_t>(std::clamp(power, 250.0, 355.0));
-    m.vram_used_mb  = 8192 + static_cast<uint64_t>(512.0 * std::sin(time_s * 0.05));
-    m.vram_total_mb = 24576;  
-    m.fan_speed_rpm = static_cast<uint32_t>(800 + (m.gpu_temp_c - 55) * 30);
+    m.gpu_clock_mhz = static_cast<uint32_t>(2500 * load_cycle + jitter * 10);
+    m.mem_clock_mhz = 2250;
+    m.gpu_temp_c = static_cast<uint32_t>(60 * load_cycle + jitter);
+    m.hotspot_temp_c = m.gpu_temp_c + 10;
+    m.gpu_tgp_w = static_cast<uint32_t>(280 * load_cycle);
+    m.gpu_utilization_pct = 95.0 * load_cycle;
+    m.vram_used_mb = 12000;
+    m.vram_total_mb = 20480;
+    m.fan_speed_rpm = static_cast<uint32_t>(1500 * load_cycle);
     return m;
 }
+
+GpuMetrics AdlxSensor::GetLatestMetrics() const {
+    std::shared_lock lock(m_metricsMutex);
+    return m_latestMetrics;
+}
+
+std::string AdlxSensor::GetGpuName() const {
+    return m_gpuName;
+}
+
 void AdlxSensor::SetError(const std::string& msg) {
     std::unique_lock lock(m_errorMutex);
     m_lastError = msg;
-    std::cerr << "[ADLX] ERROR: " << msg << "\n";
 }
-} 
+
+std::string AdlxSensor::GetLastError() const {
+    std::shared_lock lock(m_errorMutex);
+    return m_lastError;
+}
+
+} // namespace neuropace

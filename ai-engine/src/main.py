@@ -51,9 +51,9 @@ def run(config: AIEngineConfig) -> int:
     publisher.start()
     logger.info("Action/Prediction pipe servers started")
     logger.info("Connecting to telemetry stream...")
-    print("═" * 56)
+    print("=" * 56)
     print("  Press Ctrl+C to stop the AI Engine")
-    print("═" * 56)
+    print("=" * 56)
     print()
     frame_counter: int = 0
     prediction_counter: int = 0
@@ -100,16 +100,16 @@ def run(config: AIEngineConfig) -> int:
     subscriber.disconnect()
     publisher.stop()
     print()
-    print("═" * 56)
-    print("  NeuroPace AI Engine — Session Summary")
-    print("═" * 56)
+    print("=" * 56)
+    print("  NeuroPace AI Engine - Session Summary")
+    print("=" * 56)
     print(f"  Frames processed:     {frame_counter:,}")
     print(f"  Predictions made:     {prediction_counter:,}")
     print(f"  Actions triggered:    {predictor.stats.total_actions_triggered:,}")
     print(f"  Avg inference time:   {predictor.stats.avg_inference_time_ms:.3f} ms")
     print(f"  Max inference time:   {predictor.stats.max_inference_time_ms:.3f} ms")
     print(f"  Subscriber reconnects: {subscriber.stats.reconnect_count}")
-    print("═" * 56)
+    print("=" * 56)
     return 0
 def _print_status(
     frames: int,
@@ -123,8 +123,8 @@ def _print_status(
     prob = last_result.frame_drop_probability if last_result else 0.0
     action = last_result.action if last_result else "N/A"
     inf_ms = predictor.stats.avg_inference_time_ms
-    act_conn = "✓" if publisher.action_connected else "✗"
-    dash_conn = "✓" if publisher.prediction_connected else "✗"
+    act_conn = "[OK]" if publisher.action_connected else "[NO]"
+    dash_conn = "[OK]" if publisher.prediction_connected else "[NO]"
     print(
         f"[STATUS] frames={frames:>8,} | preds={predictions:>6,} | "
         f"prob={prob:.3f} | action={action:<20s} | "

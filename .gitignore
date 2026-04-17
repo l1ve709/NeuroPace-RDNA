@@ -1,9 +1,10 @@
-﻿out/
+out/
 build/
 bin/
 obj/
 node_modules/
 vcpkg_installed/
+external/vcpkg/
 .env
 .idea/
 .vscode/
@@ -13,3 +14,5 @@ logs/
 scratch/
 clean_comments.py
 strip_comments.py
+*.log
+neuropace_audit.log

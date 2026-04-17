@@ -1,3 +1,4 @@
+#include <initguid.h>
 #include "etw_collector.h"
 #include <iostream>
 #include <format>

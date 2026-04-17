@@ -104,9 +104,9 @@ int main() {
         dashboardPipe.Stop();
         return 1;
     }
-    std::cout << "═══════════════════════════════════════════════════════════\n";
+    std::cout << "===========================================================\n";
     std::cout << "  Press Ctrl+C to stop the telemetry service\n";
-    std::cout << "═══════════════════════════════════════════════════════════\n\n";
+    std::cout << "===========================================================\n\n" << std::flush;
     while (!g_shutdown.load()) {
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
