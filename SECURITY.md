@@ -17,7 +17,7 @@ If you discover a security vulnerability, please do NOT report it by creating a 
 
 Please disclose any vulnerabilities directly to the maintainer:
 - **Email:** Report it directly to the repository maintainer's primary contact.
-- **Discord:** Contact `l1ve709` privately.
+- **Discord:** Contact `cxnsole` privately.
 
 ### What to include
 Please supply the following information with your report:
