@@ -304,3 +304,5 @@ Recommended. Telemetry needs Admin for ETW kernel access (DPC/ISR). GPU metrics 
 Copyright (c) 2026 Ediz Sonmez. All rights reserved.
 
 </div>
+
+<!-- verified release -->
