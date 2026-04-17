@@ -176,6 +176,23 @@ Compatible with EasyAntiCheat, Vanguard, BattlEye, FACEIT AC, and all major plat
 
 See: [`docs/anti-cheat-compliance.md`](docs/anti-cheat-compliance.md)
 
+## 🛡️ Security & Verification
+
+We take system security seriously. NeuroPace operates purely in User-Mode (Ring-3) and does not deploy any kernel drivers (`.sys`). To ensure the binaries you run are authentic and untampered, we provide cryptographic checksums and public malware analysis links for every release.
+
+### Checksums (v0.1.0-Win64)
+| File | SHA-256 Hash |
+|---|---|
+| `NeuroPace-RDNA-v0.1.0-Win64.zip` | `E9F62D575122202543E59A0B022680CEA18DD9322B9E4C6555CE8C764A046FD4` |
+| `bin\neuropace-telemetry.exe` | `89813406ACD5B47F493DA00026702DD51D6BA8B342B227CE0EC01DA48733FBE8` |
+| `bin\neuropace-actuator.exe` | `78EDEA3939A0EFF53CD793077EAF632B538281B3013C1CA96448B66F6EF8BE2D` |
+| `NeuroPace.exe` (Launcher) | `E8FA96773F3F65CE4C49F03F44B400AB3200EC01C81167DA2CF10D4965BD21E4` |
+
+### VirusTotal Analysis
+* [neuropace-telemetry.exe Analysis](https://www.virustotal.com/gui/file/89813406ACD5B47F493DA00026702DD51D6BA8B342B227CE0EC01DA48733FBE8)
+* [neuropace-actuator.exe Analysis](https://www.virustotal.com/gui/file/78EDEA3939A0EFF53CD793077EAF632B538281B3013C1CA96448B66F6EF8BE2D)
+* [NeuroPace.exe Analysis](https://www.virustotal.com/gui/file/E8FA96773F3F65CE4C49F03F44B400AB3200EC01C81167DA2CF10D4965BD21E4)
+
 ## Quick Start
 
 ### Option 1: Download Release (Recommended)
