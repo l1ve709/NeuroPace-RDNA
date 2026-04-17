@@ -1,0 +1,29 @@
+[project]
+name = "neuropace-ai-engine"
+version = "0.1.0"
+description = "NeuroPace RDNA — AI Prediction Engine for frame drop detection"
+requires-python = ">=3.11"
+license = {text = "Proprietary"}
+
+dependencies = [
+    "onnxruntime>=1.17.0",
+    "numpy>=1.26.0",
+    "scikit-learn>=1.4.0",
+    "skl2onnx>=1.16.0",
+    "pywin32>=306",
+    "psutil>=5.9.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=4.1",
+]
+
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.backends._legacy:_Backend"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

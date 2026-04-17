@@ -1,30 +1,58 @@
 const { spawn, execSync } = require('child_process');
 const path = require('path');
+const fs = require('fs');
 const { EventEmitter } = require('events');
 const PROJECT_ROOT = path.resolve(__dirname, '..', '..');
+
+// Detect paths: in release ZIP, binaries are in bin/, AI engine in ai-engine/src/
+// In development, they might be elsewhere. We check both.
+function resolveCommand(primary, fallback) {
+    if (fs.existsSync(primary)) return primary;
+    if (fallback && fs.existsSync(fallback)) return fallback;
+    return primary; // Let it fail with a clear error
+}
+
+const TELEMETRY_EXE = resolveCommand(
+    path.join(PROJECT_ROOT, 'bin', 'neuropace-telemetry.exe'),
+    path.join(PROJECT_ROOT, 'releases', 'NeuroPace-RDNA-v0.1.0', 'bin', 'neuropace-telemetry.exe')
+);
+const AI_ENGINE_SCRIPT = resolveCommand(
+    path.join(PROJECT_ROOT, 'ai-engine', 'src', 'main.py'),
+    path.join(PROJECT_ROOT, 'scripts', 'main.py')
+);
+const ACTUATOR_EXE = resolveCommand(
+    path.join(PROJECT_ROOT, 'bin', 'neuropace-actuator.exe'),
+    path.join(PROJECT_ROOT, 'releases', 'NeuroPace-RDNA-v0.1.0', 'bin', 'neuropace-actuator.exe')
+);
+
+console.log('[PATH] Project root:', PROJECT_ROOT);
+console.log('[PATH] Telemetry:', TELEMETRY_EXE, fs.existsSync(TELEMETRY_EXE) ? '(OK)' : '(MISSING)');
+console.log('[PATH] AI Engine:', AI_ENGINE_SCRIPT, fs.existsSync(AI_ENGINE_SCRIPT) ? '(OK)' : '(MISSING)');
+console.log('[PATH] Actuator:', ACTUATOR_EXE, fs.existsSync(ACTUATOR_EXE) ? '(OK)' : '(MISSING)');
+
 const MODULE_DEFINITIONS = {
     telemetry: {
         label: 'Telemetry',
         description: 'ETW + ADLX Sensor Module',
-        command: 'python',
-        args: [path.join(PROJECT_ROOT, 'scripts', 'mock-telemetry.py')],
-        cwd: PROJECT_ROOT,
+        command: TELEMETRY_EXE,
+        args: [],
+        cwd: path.dirname(TELEMETRY_EXE),
         icon: 'sensor',
     },
     ai_engine: {
         label: 'AI Engine',
         description: 'ONNX Prediction Engine',
         command: 'python',
-        args: [path.join(PROJECT_ROOT, 'ai-engine', 'src', 'main.py')],
-        cwd: path.join(PROJECT_ROOT, 'ai-engine'),
+        args: [AI_ENGINE_SCRIPT],
+        cwd: path.dirname(AI_ENGINE_SCRIPT),
         icon: 'brain',
     },
     actuator: {
         label: 'Actuator',
         description: 'CPU Scheduler + TGP Control',
-        command: path.join(PROJECT_ROOT, 'actuator', 'build', 'Release', 'neuropace-actuator.exe'),
+        command: ACTUATOR_EXE,
         args: [],
-        cwd: path.join(PROJECT_ROOT, 'actuator'),
+        cwd: path.dirname(ACTUATOR_EXE),
         icon: 'gear',
         optional: true,
     },

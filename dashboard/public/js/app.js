@@ -58,7 +58,7 @@ const app = createApp({
         });
         function connectWS() {
             const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-            ws = new WebSocket(`${proto}
+            ws = new WebSocket(`${proto}//${location.host}`);
             ws.onopen = () => { wsConnected.value = true; };
             ws.onclose = () => {
                 wsConnected.value = false;

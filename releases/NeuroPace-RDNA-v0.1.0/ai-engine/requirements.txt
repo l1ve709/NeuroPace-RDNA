@@ -1,0 +1,20 @@
+# ============================================================================
+# NeuroPace RDNA — AI Engine Dependencies
+# ============================================================================
+# Install: pip install -r requirements.txt
+# ============================================================================
+
+# Core ML
+onnxruntime>=1.17.0
+numpy>=1.26.0
+scikit-learn>=1.4.0
+skl2onnx>=1.16.0
+
+# Windows IPC
+pywin32>=306
+
+# System monitoring (CPU per-core utilization)
+psutil>=5.9.0
+
+# Data handling
+pandas>=2.2.0
