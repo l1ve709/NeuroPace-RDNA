@@ -176,7 +176,7 @@ Compatible with EasyAntiCheat, Vanguard, BattlEye, FACEIT AC, and all major plat
 
 See: [`docs/anti-cheat-compliance.md`](docs/anti-cheat-compliance.md)
 
-## 🛡️ Security & Verification
+##  Security & Verification
 
 We take system security seriously. NeuroPace operates purely in User-Mode (Ring-3) and does not deploy any kernel drivers (`.sys`). To ensure the binaries you run are authentic and untampered, we provide cryptographic checksums and public malware analysis links for every release.
 
