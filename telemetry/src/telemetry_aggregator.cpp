@@ -8,16 +8,13 @@
 #include <atomic>
 #include <thread>
 #include <chrono>
-
 namespace neuropace {
-
 struct AggregatorConfig {
     uint32_t telemetry_interval_ms = 10;    
     uint32_t dashboard_interval_ms = 33;    
     bool     enable_console_log    = false;  
     uint32_t console_log_interval  = 100;    
 };
-
 class TelemetryAggregator {
 public:
     TelemetryAggregator(
@@ -33,25 +30,21 @@ public:
         , m_dashboardPipe(dashboardPipe)
         , m_config(config)
     {}
-
     bool Start() {
         if (m_running.load()) return false;
         m_running.store(true);
         m_sequenceId = 0;
-
         m_telemetryThread = std::thread([this]() {
             using clock = std::chrono::steady_clock;
             while (m_running.load()) {
                 auto start = clock::now();
                 TelemetryFrame frame = BuildFrame();
                 m_telemetryPipe.Publish(frame);
-
                 if (m_config.enable_console_log && 
                     (frame.sequence_id % m_config.console_log_interval == 0)) 
                 {
                     PrintFrame(frame);
                 }
-
                 auto elapsed = clock::now() - start;
                 auto target  = std::chrono::milliseconds(m_config.telemetry_interval_ms);
                 if (elapsed < target) {
@@ -59,14 +52,12 @@ public:
                 }
             }
         });
-
         m_dashboardThread = std::thread([this]() {
             using clock = std::chrono::steady_clock;
             while (m_running.load()) {
                 auto start = clock::now();
                 TelemetryFrame frame = BuildFrame();
                 m_dashboardPipe.Publish(frame);
-
                 auto elapsed = clock::now() - start;
                 auto target  = std::chrono::milliseconds(m_config.dashboard_interval_ms);
                 if (elapsed < target) {
@@ -74,16 +65,13 @@ public:
                 }
             }
         });
-
         std::cout << std::format(
             "[AGG] Aggregator started - telemetry: {}ms, dashboard: {}ms\n",
             m_config.telemetry_interval_ms,
             m_config.dashboard_interval_ms
         ) << std::flush;
-
         return true;
     }
-
     void Stop() {
         m_running.store(false);
         if (m_telemetryThread.joinable()) m_telemetryThread.join();
@@ -92,10 +80,8 @@ public:
             "[AGG] Stopped - {} total frames produced\n", m_sequenceId.load()
         ) << std::flush;
     }
-
     [[nodiscard]] bool IsRunning() const noexcept { return m_running.load(); }
     [[nodiscard]] uint64_t GetFrameCount() const noexcept { return m_sequenceId.load(); }
-
 private:
     TelemetryFrame BuildFrame() {
         TelemetryFrame frame;
@@ -107,7 +93,6 @@ private:
         frame.fps_instant   = 0.0;
         return frame;
     }
-
     void PrintFrame(const TelemetryFrame& f) {
         std::cout << std::format(
             "[#{:>6}] DPC: {:>7.1f}us | ISR: {:>6.1f}us | "
@@ -121,17 +106,14 @@ private:
             m_dashboardPipe.GetClientCount()
         ) << std::flush;
     }
-
     EtwCollector&  m_etw;
     AdlxSensor&    m_adlx;
     IpcPublisher&  m_telemetryPipe;
     IpcPublisher&  m_dashboardPipe;
     AggregatorConfig m_config;
-
     std::thread m_telemetryThread;
     std::thread m_dashboardThread;
     std::atomic<bool>     m_running{false};
     std::atomic<uint64_t> m_sequenceId{0};
 };
-
-} // namespace neuropace
+} 

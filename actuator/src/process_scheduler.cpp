@@ -117,8 +117,6 @@ bool ProcessScheduler::RebalanceThreads(int targetPriority) {
     if (::SetProcessAffinityMask(m_processHandle, newAffinity)) {
         affinityApplied = true;
     } else {
-        // Error 5 = ACCESS_DENIED — game/anti-cheat may protect the process.
-        // Gracefully fall back to thread priority only (no affinity change).
         DWORD err = ::GetLastError();
         static uint32_t affinityWarnCount = 0;
         if (affinityWarnCount++ % 30 == 0) {
@@ -174,7 +172,6 @@ bool ProcessScheduler::RebalanceThreadsToCores(
         return false;
     }
     if (!::SetProcessAffinityMask(m_processHandle, mask)) {
-        // Graceful fallback — log as warning, continue with thread priority.
         static uint32_t affinityWarnCount2 = 0;
         if (affinityWarnCount2++ % 30 == 0) {
             std::cerr << std::format(

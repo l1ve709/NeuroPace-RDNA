@@ -4,7 +4,6 @@ const express = require('express');
 const { WebSocketServer } = require('ws');
 const { PipeBridge } = require('./pipe-bridge');
 const { ProcessManager } = require('./process-manager');
-const { initRPC } = require('./rpc');
 const config = require('./config');
 const app = express();
 app.use(express.json());
@@ -100,12 +99,10 @@ console.log('+----------------------------------------------------------+');
 console.log('');
 telemetryBridge.start();
 predictionBridge.start();
-initRPC();
-
 server.listen(config.port, () => {
-    console.log(`[HTTP] Control Center: http://localhost:${config.port}`);
-    console.log(`[WS]   WebSocket:      ws://localhost:${config.port}`);
-    console.log(`[API]  REST API:       http://localhost:${config.port}/api/modules`);
+    console.log(`[HTTP] Control Center: http:
+    console.log(`[WS]   WebSocket:      ws:
+    console.log(`[API]  REST API:       http:
     console.log('');
     console.log('Press Ctrl+C to stop');
     console.log('');

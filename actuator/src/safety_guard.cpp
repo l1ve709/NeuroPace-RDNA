@@ -99,20 +99,12 @@ bool SafetyGuard::ValidateProcessHandle(HANDLE handle) {
     if (handle == nullptr || handle == INVALID_HANDLE_VALUE) {
         return false;
     }
-    // TR Engineering Note:
-    // DO NOT test the handle by performing ReadProcessMemory or similar kernel
-    // probes! Even if we explicitly expect ERROR_ACCESS_DENIED, hypervisor-based
-    // and Ring-0 anti-cheats (e.g. Vanguard, BattlEye) hook NtReadVirtualMemory
-    // and will flag the NeuroPace Actor as a potential attack vector.
-    // The Scheduler strictly requests PROCESS_SET_INFORMATION | PROCESS_QUERY_INFORMATION.
     return true;
 }
-
 bool SafetyGuard::ValidateThreadHandle(HANDLE handle) {
     if (handle == nullptr || handle == INVALID_HANDLE_VALUE) {
         return false;
     }
-    // Similarly, DO NOT test using GetThreadContext. It will trigger anti-cheat heuristic.
     return true;
 }
 bool SafetyGuard::IsRateLimited() {

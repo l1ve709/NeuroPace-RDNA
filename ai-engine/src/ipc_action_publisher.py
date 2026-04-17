@@ -102,7 +102,6 @@ class PipeServer:
         """
         Background loop: create pipe → wait for client → serve until disconnect → repeat.
         """
-        # Create permissive SECURITY_ATTRIBUTES (D:(A;;GA;;;WD) -> Generic All to Everyone)
         sa = win32security.SECURITY_ATTRIBUTES()
         sa.bInheritHandle = 0
         sa.SECURITY_DESCRIPTOR = win32security.ConvertStringSecurityDescriptorToSecurityDescriptor(

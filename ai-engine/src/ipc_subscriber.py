@@ -117,13 +117,10 @@ class IpcSubscriber:
         if not self._connected or self._handle is None:
             return []
         try:
-            # Prevent blocking infinitely if no data is available,
-            # allowing Python signals (SIGINT) to interrupt the loop safely.
             _, bytes_avail, _ = win32pipe.PeekNamedPipe(self._handle, 0)
             if bytes_avail == 0:
-                time.sleep(0.01) # Sleep 10ms to prevent CPU spinning
+                time.sleep(0.01) 
                 return []
-
             hr, data = win32file.ReadFile(
                 self._handle,
                 min(bytes_avail, self._config.read_buffer_size),
@@ -143,7 +140,6 @@ class IpcSubscriber:
             return frames
         except pywintypes.error as e:
             if e.winerror in (ERROR_BROKEN_PIPE, ERROR_NO_DATA):
-                # Pipe cleanly broken
                 self.disconnect()
             else:
                 logger.error("Pipe read error: [%d] %s", e.winerror, e.strerror)

@@ -58,7 +58,7 @@ const app = createApp({
         });
         function connectWS() {
             const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-            ws = new WebSocket(`${proto}//${location.host}`);
+            ws = new WebSocket(`${proto}
             ws.onopen = () => { wsConnected.value = true; };
             ws.onclose = () => {
                 wsConnected.value = false;
@@ -98,7 +98,6 @@ const app = createApp({
                     if (msg.data.dpc_isr) Object.assign(dpc, msg.data.dpc_isr);
                     if (msg.data.frame_time_ms != null && msg.data.frame_time_ms > 0) {
                         frameTime.value = msg.data.frame_time_ms;
-                        // Only fallback to ETW FPS if driver FPS is 0
                         if (fps.value === 0) {
                             fps.value = 1000 / msg.data.frame_time_ms;
                         }

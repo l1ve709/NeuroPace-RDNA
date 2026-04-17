@@ -3,15 +3,11 @@ const path = require('path');
 const fs = require('fs');
 const { EventEmitter } = require('events');
 const PROJECT_ROOT = path.resolve(__dirname, '..', '..');
-
-// Detect paths: in release ZIP, binaries are in bin/, AI engine in ai-engine/src/
-// In development, they might be elsewhere. We check both.
 function resolveCommand(primary, fallback) {
     if (fs.existsSync(primary)) return primary;
     if (fallback && fs.existsSync(fallback)) return fallback;
-    return primary; // Let it fail with a clear error
+    return primary; 
 }
-
 const TELEMETRY_EXE = resolveCommand(
     path.join(PROJECT_ROOT, 'bin', 'neuropace-telemetry.exe'),
     path.join(PROJECT_ROOT, 'releases', 'NeuroPace-RDNA-v0.1.0', 'bin', 'neuropace-telemetry.exe')
@@ -28,12 +24,10 @@ const ACTUATOR_EXE = (() => {
     ];
     return candidates.find(p => fs.existsSync(p)) || candidates[1];
 })();
-
 console.log('[PATH] Project root:', PROJECT_ROOT);
 console.log('[PATH] Telemetry:', TELEMETRY_EXE, fs.existsSync(TELEMETRY_EXE) ? '(OK)' : '(MISSING)');
 console.log('[PATH] AI Engine:', AI_ENGINE_SCRIPT, fs.existsSync(AI_ENGINE_SCRIPT) ? '(OK)' : '(MISSING)');
 console.log('[PATH] Actuator:', ACTUATOR_EXE, fs.existsSync(ACTUATOR_EXE) ? '(OK)' : '(MISSING)');
-
 const MODULE_DEFINITIONS = {
     telemetry: {
         label: 'Telemetry',

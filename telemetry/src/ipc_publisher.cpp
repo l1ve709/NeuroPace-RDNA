@@ -125,12 +125,10 @@ bool IpcPublisher::CreatePipeInstance(PipeClient& client) {
     SECURITY_ATTRIBUTES sa = {0};
     sa.nLength = sizeof(SECURITY_ATTRIBUTES);
     sa.bInheritHandle = FALSE;
-    // D:(A;;GA;;;WD) -> Discretionary ACL: Allow Generic All to World (Everyone)
     if (!ConvertStringSecurityDescriptorToSecurityDescriptorW(L"D:(A;;GA;;;WD)", SDDL_REVISION_1, &sa.lpSecurityDescriptor, NULL)) {
         SetError(std::format("ConvertStringSecurityDescriptor failed: error {}", ::GetLastError()));
         return false;
     }
-
     client.handle = ::CreateNamedPipeW(
         m_config.pipe_name.c_str(),
         PIPE_ACCESS_OUTBOUND | FILE_FLAG_OVERLAPPED,
@@ -142,7 +140,6 @@ bool IpcPublisher::CreatePipeInstance(PipeClient& client) {
         &sa
     );
     LocalFree(sa.lpSecurityDescriptor);
-
     if (client.handle == INVALID_HANDLE_VALUE) {
         SetError(std::format("CreateNamedPipeW failed: error {}", ::GetLastError()));
         return false;
