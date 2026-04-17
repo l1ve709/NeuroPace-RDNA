@@ -1,0 +1,15 @@
+﻿out/
+build/
+bin/
+obj/
+node_modules/
+vcpkg_installed/
+.env
+.idea/
+.vscode/
+*.pyc
+__pycache__/
+logs/
+scratch/
+clean_comments.py
+strip_comments.py

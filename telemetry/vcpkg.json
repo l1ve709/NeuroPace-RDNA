@@ -1,0 +1,8 @@
+{
+  "name": "neuropace-telemetry",
+  "version-string": "0.1.0",
+  "description": "NeuroPace RDNA — Telemetry & Sensor Module",
+  "dependencies": [
+    "nlohmann-json"
+  ]
+}

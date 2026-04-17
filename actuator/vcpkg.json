@@ -1,0 +1,8 @@
+{
+  "name": "neuropace-actuator",
+  "version-string": "0.1.0",
+  "description": "NeuroPace RDNA — Actuator & Scheduler Module",
+  "dependencies": [
+    "nlohmann-json"
+  ]
+}

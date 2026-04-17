@@ -1,0 +1,57 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://neuropace-rdna/schemas/telemetry_frame.json",
+  "title": "TelemetryFrame",
+  "description": "IPC data contract for telemetry data transmitted via Named Pipe (neuropace-telemetry)",
+  "type": "object",
+  "required": ["timestamp_us", "sequence_id", "dpc_isr", "gpu"],
+  "properties": {
+    "timestamp_us": {
+      "type": "integer",
+      "description": "Microsecond-precision UTC timestamp (QueryPerformanceCounter based)"
+    },
+    "sequence_id": {
+      "type": "integer",
+      "description": "Monotonically increasing frame sequence number"
+    },
+    "dpc_isr": {
+      "type": "object",
+      "description": "DPC and ISR latency metrics from ETW kernel tracing",
+      "required": ["dpc_latency_us", "isr_latency_us"],
+      "properties": {
+        "dpc_latency_us": { "type": "number", "description": "Current DPC execution latency (µs)" },
+        "dpc_avg_us": { "type": "number", "description": "Rolling average DPC latency (µs)" },
+        "dpc_max_us": { "type": "number", "description": "Rolling max DPC latency (µs)" },
+        "isr_latency_us": { "type": "number", "description": "Current ISR execution latency (µs)" },
+        "isr_avg_us": { "type": "number", "description": "Rolling average ISR latency (µs)" },
+        "isr_max_us": { "type": "number", "description": "Rolling max ISR latency (µs)" },
+        "dpc_count": { "type": "integer", "description": "Total DPC events in current window" },
+        "isr_count": { "type": "integer", "description": "Total ISR events in current window" }
+      }
+    },
+    "gpu": {
+      "type": "object",
+      "description": "GPU telemetry from AMD ADLX API",
+      "required": ["gpu_clock_mhz", "gpu_temp_c", "gpu_tgp_w", "vram_used_mb", "vram_total_mb", "gpu_utilization_pct"],
+      "properties": {
+        "gpu_clock_mhz": { "type": "integer", "description": "Current GPU core clock (MHz)" },
+        "mem_clock_mhz": { "type": "integer", "description": "Current memory clock (MHz)" },
+        "gpu_temp_c": { "type": "integer", "description": "GPU edge temperature (°C)" },
+        "hotspot_temp_c": { "type": "integer", "description": "GPU hotspot/junction temperature (°C)" },
+        "gpu_tgp_w": { "type": "integer", "description": "Current total graphics power (W)" },
+        "vram_used_mb": { "type": "integer", "description": "VRAM usage (MB)" },
+        "vram_total_mb": { "type": "integer", "description": "Total VRAM capacity (MB)" },
+        "gpu_utilization_pct": { "type": "number", "description": "GPU utilization (0-100%)" },
+        "fan_speed_rpm": { "type": "integer", "description": "Fan speed (RPM)" }
+      }
+    },
+    "frame_time_ms": {
+      "type": "number",
+      "description": "Current frame time derived from present events (ms)"
+    },
+    "fps_instant": {
+      "type": "number",
+      "description": "Instantaneous FPS calculated from frame_time_ms"
+    }
+  }
+}
