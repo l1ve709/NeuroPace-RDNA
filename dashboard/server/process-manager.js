@@ -20,10 +20,14 @@ const AI_ENGINE_SCRIPT = resolveCommand(
     path.join(PROJECT_ROOT, 'ai-engine', 'src', 'main.py'),
     path.join(PROJECT_ROOT, 'scripts', 'main.py')
 );
-const ACTUATOR_EXE = resolveCommand(
-    path.join(PROJECT_ROOT, 'bin', 'neuropace-actuator.exe'),
-    path.join(PROJECT_ROOT, 'releases', 'NeuroPace-RDNA-v0.1.0', 'bin', 'neuropace-actuator.exe')
-);
+const ACTUATOR_EXE = (() => {
+    const candidates = [
+        path.join(PROJECT_ROOT, 'bin', 'neuropace-actuator.exe'),
+        path.join(PROJECT_ROOT, 'releases', 'NeuroPace-RDNA-v0.1.0', 'bin', 'neuropace-actuator.exe'),
+        path.join(PROJECT_ROOT, 'actuator', 'build', 'Release', 'neuropace-actuator.exe'),
+    ];
+    return candidates.find(p => fs.existsSync(p)) || candidates[1];
+})();
 
 console.log('[PATH] Project root:', PROJECT_ROOT);
 console.log('[PATH] Telemetry:', TELEMETRY_EXE, fs.existsSync(TELEMETRY_EXE) ? '(OK)' : '(MISSING)');
@@ -54,7 +58,7 @@ const MODULE_DEFINITIONS = {
         args: [],
         cwd: path.dirname(ACTUATOR_EXE),
         icon: 'gear',
-        optional: true,
+        optional: false,
     },
 };
 class ProcessManager extends EventEmitter {

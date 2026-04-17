@@ -1,6 +1,7 @@
 #include "ipc_publisher.h"
 #include <iostream>
 #include <format>
+#include <sddl.h>
 namespace neuropace {
 IpcPublisher::IpcPublisher(const PipeConfig& config)
     : m_config(config)
@@ -121,6 +122,15 @@ void IpcPublisher::AcceptLoop() {
     }
 }
 bool IpcPublisher::CreatePipeInstance(PipeClient& client) {
+    SECURITY_ATTRIBUTES sa = {0};
+    sa.nLength = sizeof(SECURITY_ATTRIBUTES);
+    sa.bInheritHandle = FALSE;
+    // D:(A;;GA;;;WD) -> Discretionary ACL: Allow Generic All to World (Everyone)
+    if (!ConvertStringSecurityDescriptorToSecurityDescriptorW(L"D:(A;;GA;;;WD)", SDDL_REVISION_1, &sa.lpSecurityDescriptor, NULL)) {
+        SetError(std::format("ConvertStringSecurityDescriptor failed: error {}", ::GetLastError()));
+        return false;
+    }
+
     client.handle = ::CreateNamedPipeW(
         m_config.pipe_name.c_str(),
         PIPE_ACCESS_OUTBOUND | FILE_FLAG_OVERLAPPED,
@@ -129,8 +139,10 @@ bool IpcPublisher::CreatePipeInstance(PipeClient& client) {
         m_config.buffer_size,
         0,
         m_config.connect_timeout_ms,
-        nullptr     
+        &sa
     );
+    LocalFree(sa.lpSecurityDescriptor);
+
     if (client.handle == INVALID_HANDLE_VALUE) {
         SetError(std::format("CreateNamedPipeW failed: error {}", ::GetLastError()));
         return false;

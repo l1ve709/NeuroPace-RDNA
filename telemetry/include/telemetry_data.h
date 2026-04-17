@@ -30,11 +30,12 @@ struct GpuMetrics {
     uint64_t vram_total_mb     = 0;
     double   gpu_utilization_pct = 0.0;
     uint32_t fan_speed_rpm     = 0;
+    uint32_t fps               = 0;
 };
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(GpuMetrics,
     gpu_clock_mhz, mem_clock_mhz, gpu_temp_c, hotspot_temp_c,
     gpu_tgp_w, vram_used_mb, vram_total_mb, gpu_utilization_pct,
-    fan_speed_rpm)
+    fan_speed_rpm, fps)
 struct TelemetryFrame {
     uint64_t     timestamp_us = 0;    
     uint64_t     sequence_id  = 0;    

@@ -123,8 +123,8 @@
                     </div>
                     <div class="metric-card status-accent">
                         <div class="metric-header"><span class="metric-icon">&#127918;</span><span class="metric-label">FPS</span></div>
-                        <div class="metric-value fps-value">{{ fps.toFixed(0) }}</div>
-                        <div class="metric-sub">{{ frameTime.toFixed(2) }}ms</div>
+                        <div class="metric-value fps-value">{{ fps > 0 ? fps.toFixed(0) : 'SAFE' }}</div>
+                        <div class="metric-sub">{{ fps > 0 ? 'Driver-Level' : 'Pure Hardware Mode' }}</div>
                     </div>
                     <div class="metric-card">
                         <div class="metric-header"><span class="metric-icon">&#129504;</span><span class="metric-label">AI RISK</span></div>

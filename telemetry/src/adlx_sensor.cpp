@@ -101,6 +101,16 @@ void AdlxSensor::Shutdown() {
 bool AdlxSensor::Start() {
     if (m_running.exchange(true)) return true;
 
+#ifdef NEUROPACE_HAS_ADLX
+    if (m_adlxAvailable) {
+        auto* perf = static_cast<IADLXPerformanceMonitoringServices*>(m_perfService);
+        if (perf) {
+            ADLX_RESULT res = perf->StartPerformanceMetricsTracking();
+            std::cout << "[ADLX] Start tracking result: " << static_cast<int>(res) << std::endl;
+        }
+    }
+#endif
+
     m_pollThread = std::thread(&AdlxSensor::PollLoop, this);
     return true;
 }
@@ -168,6 +178,22 @@ GpuMetrics AdlxSensor::ReadAdlxMetrics() {
     metrics.gpu_utilization_pct = util;
     metrics.fan_speed_rpm = static_cast<uint32_t>(fan);
     metrics.vram_used_mb = static_cast<uint64_t>(vramMB);
+
+    // Fetch Safe Driver-Level FPS
+    IADLXFPSPtr adlxFps;
+    ADLX_RESULT res = perf->GetCurrentFPS(&adlxFps);
+    if (ADLX_SUCCEEDED(res)) {
+        adlx_int fpsVal = 0;
+        if (ADLX_SUCCEEDED(adlxFps->FPS(&fpsVal))) {
+            metrics.fps = static_cast<uint32_t>(fpsVal);
+        }
+    } else {
+        // Log error once every 30 samples to avoid spamming
+        static uint32_t failCounter = 0;
+        if (failCounter++ % 30 == 0) {
+             std::cerr << "[ADLX] GetCurrentFPS failed: " << static_cast<int>(res) << std::endl;
+        }
+    }
 
     adlx_uint vramTotal = 0;
     if (ADLX_SUCCEEDED(gpu->TotalVRAM(&vramTotal))) {

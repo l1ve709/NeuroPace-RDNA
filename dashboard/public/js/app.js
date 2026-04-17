@@ -89,11 +89,19 @@ const app = createApp({
                     }
                     break;
                 case 'telemetry':
-                    if (msg.data.gpu) Object.assign(gpu, msg.data.gpu);
+                    if (msg.data.gpu) {
+                        Object.assign(gpu, msg.data.gpu);
+                        if (msg.data.gpu.fps != null && msg.data.gpu.fps > 0) {
+                            fps.value = msg.data.gpu.fps;
+                        }
+                    }
                     if (msg.data.dpc_isr) Object.assign(dpc, msg.data.dpc_isr);
-                    if (msg.data.frame_time_ms != null) {
+                    if (msg.data.frame_time_ms != null && msg.data.frame_time_ms > 0) {
                         frameTime.value = msg.data.frame_time_ms;
-                        fps.value = msg.data.frame_time_ms > 0 ? 1000 / msg.data.frame_time_ms : 0;
+                        // Only fallback to ETW FPS if driver FPS is 0
+                        if (fps.value === 0) {
+                            fps.value = 1000 / msg.data.frame_time_ms;
+                        }
                     }
                     if (charts.overview) charts.overview.push(msg.data.frame_time_ms || 0);
                     if (charts.frameTime) charts.frameTime.push(msg.data.frame_time_ms || 0);

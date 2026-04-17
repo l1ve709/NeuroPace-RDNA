@@ -48,6 +48,6 @@ private:
     mutable std::shared_mutex m_errorMutex;
     std::string               m_lastError;
     std::vector<BYTE> m_propertiesBuffer;
-    static constexpr wchar_t kSessionName[] = L"NeuroPace_DPC_ISR_Trace";
+    static constexpr wchar_t kSessionName[] = KERNEL_LOGGER_NAMEW;
 };
 } 

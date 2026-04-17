@@ -61,10 +61,10 @@ int main() {
     dashboardPipeConfig.pipe_name = L"\\\\.\\pipe\\neuropace-dashboard";
     dashboardPipeConfig.max_instances = 4;
     neuropace::AggregatorConfig aggConfig;
-    aggConfig.telemetry_interval_ms = 10;   
+    aggConfig.telemetry_interval_ms = 5;    // SPEED: 5ms between telemetry frames (was 10)
     aggConfig.dashboard_interval_ms = 33;   
     aggConfig.enable_console_log    = true;
-    aggConfig.console_log_interval  = 100;  
+    aggConfig.console_log_interval  = 200;  // Reduce console spam at higher frame rate
     std::cout << "\n[MAIN] Initializing components...\n";
     neuropace::EtwCollector  etw(etwConfig);
     neuropace::AdlxSensor    adlx(adlxConfig);

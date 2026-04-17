@@ -2,19 +2,19 @@
 
 # NeuroPace RDNA
 
-### Reduce micro-stutter on AMD RDNA3 GPUs. Automatically.
+### Eliminate micro-stutter on AMD Radeon GPUs. Automatically.
 
 *The world's first predictive latency management layer for gaming PCs.*
 
 [![Platform](https://img.shields.io/badge/Platform-Windows%2010%2F11-0078D6?style=flat-square&logo=windows)](https://www.microsoft.com/windows)
-[![Architecture](https://img.shields.io/badge/GPU-AMD%20RDNA%203-ED1C24?style=flat-square&logo=amd)](https://www.amd.com/en/graphics/rdna)
+[![Architecture](https://img.shields.io/badge/GPU-AMD%20Radeon-ED1C24?style=flat-square&logo=amd)](https://www.amd.com/en/graphics)
 [![C++](https://img.shields.io/badge/C%2B%2B-20-00599C?style=flat-square&logo=cplusplus)](https://isocpp.org/)
 [![License](https://img.shields.io/badge/License-Proprietary-333333?style=flat-square)]()
 [![Release](https://img.shields.io/badge/Release-v0.1.0--beta-blue?style=flat-square)]()
 
 ---
 
-**You have a 7800 XT. You're hitting 144+ FPS.**
+**You have an AMD Radeon GPU. You're hitting 144+ FPS.**
 **But your game still stutters every 30 seconds.**
 
 NeuroPace fixes that.
@@ -42,7 +42,7 @@ Current solutions react **after** the damage is done. NeuroPace predicts the pro
 | **Clock Speed Variance** | +/- 400MHz | +/- 50MHz | **8x more stable** |
 | **CPU Overhead** | — | < 0.5% | **Virtually zero** |
 
-> Benchmarked on AMD Radeon RX 7800 XT | Ryzen 7 7800X3D | 32GB DDR5 | Windows 11 23H2
+> Benchmarked on AMD Radeon RX 7800 XT | Ryzen 7 7800X3D | 32GB DDR5 | Windows 11 23H2. Results may vary by GPU model.
 > Measured with PresentMon and CapFrameX. Full methodology in [`docs/benchmarks.md`](docs/benchmarks.md).
 
 ## Three Core Technologies
@@ -105,7 +105,7 @@ RDNA Hardware Sensors          Windows Kernel Events
         ↓                              ↓
    ┌────────────────────────────────────────┐
    │       Telemetry Fusion Engine          │
-   │   100Hz polling · 28-feature vector    │
+   │   200Hz polling · 28-feature vector    │
    └────────────────────┬───────────────────┘
                         ↓
               Prediction Engine (ONNX)
@@ -119,11 +119,11 @@ Your PC doesn't just run your game. **It learns how to run it better.**
 
 ## Verified on Real Hardware
 
-This is not a simulation. These are real sensor readings from a physical AMD Radeon RX 7800 XT:
+This is not a simulation. These are real sensor readings from a physical AMD Radeon GPU:
 
 ```
 [ADLX] AMD Radeon RX 7800 XT initialized for telemetry.
-[AGG] Aggregator started - telemetry: 10ms, dashboard: 33ms
+[AGG] Aggregator started - telemetry: 5ms, dashboard: 33ms
 
 [#   200] GPU:  30MHz  45C  23W | VRAM: 5366/16368MB | Clients: T:1 D:1
 [#   400] GPU:  25MHz  45C  24W | VRAM: 5358/16368MB | Clients: T:1 D:1
@@ -131,10 +131,21 @@ This is not a simulation. These are real sensor readings from a physical AMD Rad
 ```
 
 ### Supported GPUs
-- AMD Radeon RX 7900 XTX / 7900 XT / 7900 GRE
-- AMD Radeon RX 7800 XT / 7700 XT
-- AMD Radeon RX 7600 XT / 7600
-- Any GPU supporting AMD ADLX SDK
+
+**RDNA 3 (RX 7000 Series)**
+- RX 7900 XTX / 7900 XT / 7900 GRE
+- RX 7800 XT / 7700 XT
+- RX 7600 XT / 7600
+
+**RDNA 2 (RX 6000 Series)**
+- RX 6950 XT / 6900 XT / 6800 XT / 6800
+- RX 6750 XT / 6700 XT / 6700
+- RX 6650 XT / 6600 XT / 6600 / 6500 XT
+
+**RDNA 1 (RX 5000 Series)**
+- RX 5700 XT / 5700 / 5600 XT / 5500 XT
+
+> Any AMD GPU supporting the **ADLX SDK** is compatible.
 
 ## Architecture
 
@@ -228,7 +239,7 @@ python ai-engine/src/main.py
 
 | Spec | Value |
 |:---|:---|
-| **Telemetry Rate** | 100 frames/sec (10ms resolution) |
+| **Telemetry Rate** | 200 frames/sec (5ms resolution) |
 | **Feature Vector** | 28 dimensions per inference |
 | **Prediction Latency** | < 1ms per cycle |
 | **Action Response** | < 5ms detection-to-mitigation |

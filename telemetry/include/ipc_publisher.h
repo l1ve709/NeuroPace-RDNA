@@ -10,7 +10,7 @@
 namespace neuropace {
 struct PipeConfig {
     std::wstring pipe_name       = L"\\\\.\\pipe\\neuropace-telemetry";
-    uint32_t     max_instances   = 4;        
+    uint32_t     max_instances   = 255;        
     uint32_t     buffer_size     = 65536;    
     uint32_t     connect_timeout_ms = 100;   
 };

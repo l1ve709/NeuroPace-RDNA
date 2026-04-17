@@ -113,10 +113,20 @@ bool ProcessScheduler::RebalanceThreads(int targetPriority) {
         static_cast<int>(m_config.max_thread_priority)
     );
     DWORD_PTR newAffinity = CalculateOptimalAffinity();
-    if (!::SetProcessAffinityMask(m_processHandle, newAffinity)) {
-        SetError(std::format("SetProcessAffinityMask failed: error {}",
-                             ::GetLastError()));
-        return false;
+    bool affinityApplied = false;
+    if (::SetProcessAffinityMask(m_processHandle, newAffinity)) {
+        affinityApplied = true;
+    } else {
+        // Error 5 = ACCESS_DENIED — game/anti-cheat may protect the process.
+        // Gracefully fall back to thread priority only (no affinity change).
+        DWORD err = ::GetLastError();
+        static uint32_t affinityWarnCount = 0;
+        if (affinityWarnCount++ % 30 == 0) {
+            std::cerr << std::format(
+                "[SCHED] WARN: SetProcessAffinityMask failed (error {}). "
+                "Falling back to thread-priority-only mode.\n", err
+            );
+        }
     }
     auto threadIds = EnumerateProcessThreads(m_targetPid);
     int threadsModified = 0;
@@ -128,9 +138,6 @@ bool ProcessScheduler::RebalanceThreads(int targetPriority) {
         ));
         if (!hThread.IsValid()) continue;
         if (!m_guard.ValidateThreadHandle(hThread.Get())) {
-            std::cerr << std::format(
-                "[SCHED] SafetyGuard rejected thread handle for TID {}\n", tid
-            );
             continue;
         }
         if (::SetThreadPriority(hThread.Get(), targetPriority)) {
@@ -139,10 +146,13 @@ bool ProcessScheduler::RebalanceThreads(int targetPriority) {
     }
     m_snapshot.modified = true;
     m_snapshot.appliedAt = std::chrono::steady_clock::now();
-    std::cout << std::format(
-        "[SCHED] Rebalanced: affinity=0x{:X}, priority={}, threads={}/{}\n",
-        newAffinity, targetPriority, threadsModified, threadIds.size()
-    );
+    if (threadsModified > 0) {
+        std::cout << std::format(
+            "[SCHED] Rebalanced: affinity={}, priority={}, threads={}/{}\n",
+            affinityApplied ? std::format("0x{:X}", newAffinity) : "SKIPPED",
+            targetPriority, threadsModified, threadIds.size()
+        );
+    }
     return true;
 }
 bool ProcessScheduler::RebalanceThreadsToCores(
@@ -164,9 +174,14 @@ bool ProcessScheduler::RebalanceThreadsToCores(
         return false;
     }
     if (!::SetProcessAffinityMask(m_processHandle, mask)) {
-        SetError(std::format("SetProcessAffinityMask failed: error {}",
-                             ::GetLastError()));
-        return false;
+        // Graceful fallback — log as warning, continue with thread priority.
+        static uint32_t affinityWarnCount2 = 0;
+        if (affinityWarnCount2++ % 30 == 0) {
+            std::cerr << std::format(
+                "[SCHED] WARN: SetProcessAffinityMask (cores) failed (error {}). "
+                "Thread priority will still be applied.\n", ::GetLastError()
+            );
+        }
     }
     priority = (std::min)(priority, static_cast<int>(m_config.max_thread_priority));
     auto threadIds = EnumerateProcessThreads(m_targetPid);

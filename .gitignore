@@ -17,9 +17,31 @@ strip_comments.py
 *.log
 neuropace_audit.log
 
+# Build artifacts
+actuator/build/
+telemetry/build/
+
 # Release artifacts (distributed via GitHub Releases, not tracked in git)
 releases/
 test_extract/
 *.zip
 *.exe
 release_notes.txt
+
+# Session data & temp scripts
+scripts/cs2_session.csv
+scripts/elevated-*.ps1
+scripts/ControlPanel.cs
+scripts/SysTrayLauncher.cs
+*_test.log
+*_stderr.log
+*_stdout.log
+hardware_*.log
+dashboard_*.log
+actuator_*.log
+telemetry_*.log
+ai_engine_*.log
+
+# AI Model files (large, distributed via Releases)
+ai-engine/models/*.onnx
+ai-engine/models/*.tmp.onnx

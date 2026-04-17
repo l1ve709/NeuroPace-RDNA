@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from typing import Optional
 import win32file
 import win32pipe
+import win32security
 import pywintypes
 from config import PipeConfig
 logger = logging.getLogger("neuropace.ai.ipc_pub")
@@ -101,6 +102,12 @@ class PipeServer:
         """
         Background loop: create pipe → wait for client → serve until disconnect → repeat.
         """
+        # Create permissive SECURITY_ATTRIBUTES (D:(A;;GA;;;WD) -> Generic All to Everyone)
+        sa = win32security.SECURITY_ATTRIBUTES()
+        sa.bInheritHandle = 0
+        sa.SECURITY_DESCRIPTOR = win32security.ConvertStringSecurityDescriptorToSecurityDescriptor(
+            "D:(A;;GA;;;WD)", win32security.SDDL_REVISION_1
+        )
         while self._running:
             try:
                 handle = win32pipe.CreateNamedPipe(
@@ -115,7 +122,7 @@ class PipeServer:
                     self._buffer_size,
                     0,      
                     0,      
-                    None,   
+                    sa,   
                 )
             except pywintypes.error as e:
                 logger.error(
