@@ -177,12 +177,13 @@ NeuroPace-RDNA-v0.1.0-Win64.zip
 │   ├── neuropace-telemetry.exe
 │   └── neuropace-actuator.exe
 ├── scripts/         # Prediction engine
+├── dashboard/       # Web Dashboard (Vue/Node.js)
 ├── models/          # Pre-trained ONNX model
-├── NeuroPace-ControlCenter.exe # GUI Launcher
+├── NeuroPace.exe    # Smart System Tray Launcher
 └── README.md
 ```
 
-Run `NeuroPace-ControlCenter.exe` as Administrator.
+Run `NeuroPace.exe`. It will seamlessly start the Node.js backend and open the web dashboard in your browser.
 
 ### Option 2: Build From Source
 
@@ -213,8 +214,8 @@ pip install -r ai-engine/requirements.txt
 ### Run
 
 ```powershell
-# Terminal 1 — Control Center (requires Admin for ETW)
-.\releases\NeuroPace-RDNA-v0.1.0\NeuroPace-ControlCenter.exe
+# Terminal 1 — System Tray Web Launcher
+.\releases\NeuroPace-RDNA-v0.1.0\NeuroPace.exe
 
 # Terminal 2 — Prediction Engine
 python ai-engine/src/main.py
