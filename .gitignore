@@ -16,3 +16,10 @@ clean_comments.py
 strip_comments.py
 *.log
 neuropace_audit.log
+
+# Release artifacts (distributed via GitHub Releases, not tracked in git)
+releases/
+test_extract/
+*.zip
+*.exe
+release_notes.txt
