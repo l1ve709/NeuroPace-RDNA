@@ -1,18 +1,21 @@
-Copyright (c) 2026, l1ve709. All rights reserved.
+MIT License
 
-NEUROPACE RDNA - END USER LICENSE AGREEMENT (EULA)
+Copyright (c) 2026 l1ve709
 
-1. PROPRIETARY RIGHTS
-This software ("NeuroPace RDNA") is proprietary and its source code is protected by copyright laws. You are granted a limited, non-exclusive, non-transferable license to use the compiled binaries on your personal computer purely for end-use performance optimization in gaming environments.
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-2. RESTRICTIONS
-You may not:
-- Distribute, sell, or commercialize the software or its compiled binaries.
-- Reverse engineer, decompile, or disassemble the binaries (except as permitted by law).
-- Remove or alter any copyright or watermark notices.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
-3. DISCLAIMER OF WARRANTY
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-4. LIMITATION OF LIABILITY
-Under no circumstances shall the author be held liable for hardware damage, loss of data, bans from Anti-Cheat systems (such as Vanguard, VAC, EAC, FaceIt), or any direct or indirect damages incurred as a result of using this software. The software attempts dynamic hardware power/frequency moderation; YOU ASSUME ALL RISKS INVOLVED IN SYSTEM TUNING.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
