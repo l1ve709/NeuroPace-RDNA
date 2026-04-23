@@ -3,55 +3,63 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NeuroPace RDNA — Control Center</title>
-    <meta name="description" content="Full system control center for NeuroPace RDNA AI Frame-Drop Prevention Engine">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <title>NeuroPace RDNA | Control Center</title>
     <link rel="stylesheet" href="css/dashboard.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono&display=swap" rel="stylesheet">
+    <!-- Local Vue fallback -->
+    <script src="js/vue.global.prod.js"></script>
+    <script>
+        if (typeof Vue === 'undefined') {
+            console.warn('[DASHBOARD] Local Vue failed, trying CDN...');
+            document.write('<script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"><\/script>');
+        }
+    </script>
+    <script src="js/chart-engine.js"></script>
+    <script src="js/app.js"></script>
 </head>
 <body>
-    <div id="app" class="app-layout">
-        <!-- ═══ Sidebar ═══ -->
+    <div id="app" v-cloak class="app-layout">
+        <!-- Sidebar -->
         <aside class="sidebar">
             <div class="sidebar-brand">
-                <svg class="brand-logo" viewBox="0 0 32 32" fill="none">
-                    <rect x="2" y="2" width="28" height="28" rx="6" stroke="url(#lg)" stroke-width="2"/>
-                    <path d="M10 22V10l6 6 6-6v12" stroke="url(#lg)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    <defs><linearGradient id="lg" x1="0" y1="0" x2="32" y2="32">
-                        <stop stop-color="#00aeff"/><stop offset="1" stop-color="#00ffcc"/>
-                    </linearGradient></defs>
-                </svg>
-                <div>
-                    <div class="brand-title">NeuroPace <span>RDNA</span></div>
-                    <div class="brand-sub">Control Center</div>
+                <div class="brand-logo">
+                    <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:32px;height:32px;">
+                        <circle cx="16" cy="16" r="14" stroke="url(#logo-grad)" stroke-width="3"/>
+                        <path d="M16 8V24M8 16H24" stroke="url(#logo-grad)" stroke-width="3" stroke-linecap="round"/>
+                        <defs>
+                            <linearGradient id="logo-grad" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
+                                <stop stop-color="#00aeff"/>
+                                <stop offset="1" stop-color="#00ffcc"/>
+                            </linearGradient>
+                        </defs>
+                    </svg>
+                </div>
+                <div class="brand-info">
+                    <div class="brand-title">NEUROPACE <span>RDNA</span></div>
+                    <div class="brand-sub">Advanced Latency Management</div>
                 </div>
             </div>
 
             <nav class="sidebar-nav">
-                <a class="nav-item" :class="{ active: page === 'overview' }" @click="page='overview'">
-                    <svg viewBox="0 0 20 20"><rect x="2" y="2" width="7" height="7" rx="1.5"/><rect x="11" y="2" width="7" height="7" rx="1.5"/><rect x="2" y="11" width="7" height="7" rx="1.5"/><rect x="11" y="11" width="7" height="7" rx="1.5"/></svg>
-                    Overview
+                <a @click="page = 'overview'" :class="['nav-item', { active: page === 'overview' }]">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>
+                    <span>Overview</span>
                 </a>
-                <a class="nav-item" :class="{ active: page === 'monitoring' }" @click="page='monitoring'">
-                    <svg viewBox="0 0 20 20"><polyline points="2,15 6,8 10,12 14,4 18,9" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                    Monitoring
+                <a @click="page = 'performance'" :class="['nav-item', { active: page === 'performance' }]">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M10 20h4V4h-4v16zm-6 0h4v-8H4v8zM16 9v11h4V9h-4z"/></svg>
+                    <span>Performance</span>
                 </a>
-                <a class="nav-item" :class="{ active: page === 'control' }" @click="page='control'">
-                    <svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="3" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 2v3M10 15v3M2 10h3M15 10h3M4.2 4.2l2.1 2.1M13.7 13.7l2.1 2.1M4.2 15.8l2.1-2.1M13.7 6.3l2.1-2.1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
-                    Control Panel
-                </a>
-                <a class="nav-item" :class="{ active: page === 'logs' }" @click="page='logs'">
-                    <svg viewBox="0 0 20 20"><rect x="3" y="2" width="14" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/><line x1="6" y1="6" x2="14" y2="6" stroke="currentColor" stroke-width="1.2"/><line x1="6" y1="9" x2="14" y2="9" stroke="currentColor" stroke-width="1.2"/><line x1="6" y1="12" x2="11" y2="12" stroke="currentColor" stroke-width="1.2"/></svg>
-                    Logs
+                <a @click="page = 'logs'" :class="['nav-item', { active: page === 'logs' }]">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+                    <span>System Logs</span>
                 </a>
             </nav>
 
             <div class="sidebar-modules">
-                <div class="sidebar-section-title">MODULES</div>
-                <div class="module-indicator" v-for="(m, id) in modules" :key="id">
-                    <span class="status-dot-sm" :class="m.status"></span>
-                    <span class="module-name-sm">{{ m.label }}</span>
+                <div class="sidebar-section-title">Backend Modules</div>
+                <div v-for="(mod, id) in modules" :key="id" class="module-indicator">
+                    <span :class="['status-dot-sm', mod.status]"></span>
+                    <span class="module-name-sm">{{ mod.name }}</span>
                 </div>
             </div>
 
@@ -60,244 +68,204 @@
             </div>
         </aside>
 
-        <!-- ═══ Main Content ═══ -->
+        <!-- Main Content -->
         <main class="main-content">
-            <!-- ─── Overview ─── -->
-            <section v-show="page === 'overview'" class="page">
-                <div class="page-header">
+            <!-- Overview Page -->
+            <section v-if="page === 'overview'" class="page">
+                <header class="page-header">
                     <h1>System Overview</h1>
                     <div class="header-actions">
-                        <button class="btn btn-primary" @click="startAll" :disabled="allRunning">
-                            <svg viewBox="0 0 16 16"><polygon points="4,2 14,8 4,14"/></svg> Start All
-                        </button>
-                        <button class="btn btn-danger" @click="stopAll" :disabled="noneRunning">
-                            <svg viewBox="0 0 16 16"><rect x="3" y="3" width="10" height="10" rx="1.5"/></svg> Stop All
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Module Status Cards -->
-                <div class="module-grid">
-                    <div class="module-card" v-for="(m, id) in modules" :key="id" :class="'status-' + m.status">
-                        <div class="module-card-header">
-                            <div class="module-icon-wrap">
-                                <span class="module-icon" v-if="m.icon === 'sensor'">&#128225;</span>
-                                <span class="module-icon" v-else-if="m.icon === 'brain'">&#129504;</span>
-                                <span class="module-icon" v-else-if="m.icon === 'gear'">&#9881;</span>
-                                <span class="module-icon" v-else>&#9679;</span>
-                            </div>
-                            <div>
-                                <div class="module-card-title">{{ m.label }}</div>
-                                <div class="module-card-desc">{{ m.description }}</div>
-                            </div>
-                            <span class="status-badge" :class="m.status">{{ m.status }}</span>
-                        </div>
-                        <div class="module-card-body">
-                            <div class="module-stat" v-if="m.pid"><span>PID</span><span class="mono">{{ m.pid }}</span></div>
-                            <div class="module-stat" v-if="m.uptime"><span>Uptime</span><span class="mono">{{ formatUptime(m.uptime) }}</span></div>
-                        </div>
-                        <div class="module-card-actions">
-                            <button class="btn btn-sm btn-success" v-if="m.status !== 'running'" @click="startModule(id)">Start</button>
-                            <button class="btn btn-sm btn-danger" v-if="m.status === 'running'" @click="stopModule(id)">Stop</button>
+                        <div class="status-badge" :class="wsConnected ? 'running' : 'stopped'">
+                            {{ wsConnected ? 'WS CONNECTED' : 'WS DISCONNECTED' }}
                         </div>
                     </div>
-                </div>
+                </header>
 
-                <!-- Quick Metrics -->
                 <div class="metrics-row">
+                    <!-- Gauge Card -->
+                    <div class="metric-card status-accent gauge-panel">
+                        <div class="metric-label">AI DROP RISK</div>
+                        <div class="gauge-container">
+                            <svg class="gauge" viewBox="0 0 100 100">
+                                <circle class="gauge-track" cx="50" cy="50" r="45"></circle>
+                                <circle class="gauge-fill" cx="50" cy="50" r="45" 
+                                        :style="{ 'stroke-dasharray': gaugeDash, 'stroke': gaugeColor }"></circle>
+                                <text x="50" y="50" class="gauge-value" style="font-size:20px; font-weight:800; text-anchor:middle; fill:white; transform:rotate(90deg); transform-origin:center;">{{ (prediction.probability * 100).toFixed(0) }}%</text>
+                            </svg>
+                        </div>
+                        <div class="prediction-action" :class="'act-' + prediction.action.toLowerCase()">
+                            {{ prediction.action.replace('_', ' ') }}
+                        </div>
+                    </div>
+
                     <div class="metric-card" :class="getMetricStatus('clock')">
-                        <div class="metric-header"><span class="metric-icon">&#9889;</span><span class="metric-label">GPU CLOCK</span></div>
+                        <div class="metric-header">
+                            <span class="metric-icon">⚡</span>
+                            <span class="metric-label">GPU CLOCK</span>
+                        </div>
                         <div class="metric-value">{{ gpu.gpu_clock_mhz }}<span class="unit">MHz</span></div>
-                        <div class="metric-bar"><div class="metric-bar-fill" :style="{ width: (gpu.gpu_clock_mhz / 2700 * 100) + '%' }"></div></div>
+                        <div class="metric-sub">Temp: {{ gpu.gpu_temp_c }}°C | TGP: {{ gpu.gpu_tgp_w }}W</div>
+                        <div class="metric-bar">
+                            <div class="metric-bar-fill" :style="{ width: Math.min(100, (gpu.gpu_clock_mhz / 2800 * 100)) + '%' }"></div>
+                        </div>
                     </div>
-                    <div class="metric-card" :class="getMetricStatus('temp')">
-                        <div class="metric-header"><span class="metric-icon">&#127777;</span><span class="metric-label">GPU TEMP</span></div>
-                        <div class="metric-value">{{ gpu.gpu_temp_c }}<span class="unit">&deg;C</span></div>
-                        <div class="metric-sub">Hotspot: {{ gpu.hotspot_temp_c }}&deg;C</div>
-                        <div class="metric-bar"><div class="metric-bar-fill" :style="{ width: gpu.gpu_temp_c + '%' }"></div></div>
-                    </div>
-                    <div class="metric-card" :class="getMetricStatus('tgp')">
-                        <div class="metric-header"><span class="metric-icon">&#9889;</span><span class="metric-label">TGP</span></div>
-                        <div class="metric-value">{{ gpu.gpu_tgp_w }}<span class="unit">W</span></div>
-                        <div class="metric-bar"><div class="metric-bar-fill" :style="{ width: (gpu.gpu_tgp_w / 400 * 100) + '%' }"></div></div>
-                    </div>
-                    <div class="metric-card status-accent">
-                        <div class="metric-header"><span class="metric-icon">&#127918;</span><span class="metric-label">FPS</span></div>
-                        <div class="metric-value fps-value">{{ fps > 0 ? fps.toFixed(0) : 'SAFE' }}</div>
-                        <div class="metric-sub">{{ fps > 0 ? 'Driver-Level' : 'Pure Hardware Mode' }}</div>
-                    </div>
+
                     <div class="metric-card">
-                        <div class="metric-header"><span class="metric-icon">&#129504;</span><span class="metric-label">AI RISK</span></div>
-                        <div class="metric-value" :style="{ color: gaugeColor }">{{ (prediction.probability * 100).toFixed(0) }}<span class="unit">%</span></div>
-                        <div class="metric-sub">{{ prediction.action.replace(/_/g, ' ') }}</div>
+                        <div class="metric-header">
+                            <span class="metric-icon">💾</span>
+                            <span class="metric-label">VRAM USAGE</span>
+                        </div>
+                        <div class="metric-value">{{ gpu.vram_used_mb }}<span class="unit">MB</span></div>
+                        <div class="metric-sub">of {{ gpu.vram_total_mb }} MB total</div>
+                        <div class="metric-bar">
+                            <div class="metric-bar-fill" :style="{ width: (gpu.vram_used_mb / gpu.vram_total_mb * 100) + '%' }"></div>
+                        </div>
+                    </div>
+
+                    <div class="metric-card" :class="{ 'status-danger': dpc.dpc_latency_us > 500 }">
+                        <div class="metric-header">
+                            <span class="metric-icon">⏱️</span>
+                            <span class="metric-label">DPC LATENCY</span>
+                        </div>
+                        <div class="metric-value">{{ dpc.dpc_latency_us }}<span class="unit">µs</span></div>
+                        <div class="metric-sub">Avg: {{ dpc.dpc_avg_us }}µs | ISR: {{ dpc.isr_latency_us }}µs</div>
+                        <div class="metric-bar">
+                            <div class="metric-bar-fill" :style="{ width: Math.min(100, dpc.dpc_latency_us / 10) + '%' }"></div>
+                        </div>
+                    </div>
+
+                    <div class="metric-card status-accent">
+                        <div class="metric-header">
+                            <span class="metric-icon">📉</span>
+                            <span class="metric-label">FRAME TIME</span>
+                        </div>
+                        <div class="metric-value fps-value">{{ frameTime.toFixed(2) }}<span class="unit">ms</span></div>
+                        <div class="metric-sub">Current FPS: {{ Math.round(fps) }}</div>
+                        <div class="metric-bar">
+                            <div class="metric-bar-fill" :style="{ width: Math.min(100, (frameTime / 33.3 * 100)) + '%' }"></div>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Mini Frame Time Chart -->
-                <div class="panel">
-                    <div class="panel-header"><h2>Frame Time</h2>
-                        <div class="chart-legend">
-                            <span class="legend-item legend-line">Current</span>
-                            <span class="legend-item legend-p95">60fps</span>
-                            <span class="legend-item legend-p99">144fps</span>
+                <div class="monitor-grid">
+                    <div class="panel">
+                        <div class="panel-header">
+                            <h2>Telemetry Stream</h2>
+                            <div class="chart-legend">
+                                <span class="legend-item legend-line">Latency</span>
+                            </div>
+                        </div>
+                        <div class="chart-container chart-tall">
+                            <canvas id="overviewChart"></canvas>
                         </div>
                     </div>
-                    <div class="chart-container"><canvas id="overviewChart"></canvas></div>
+                    
+                    <div class="panel">
+                        <div class="panel-header">
+                            <h2>Recent Actions</h2>
+                        </div>
+                        <div class="action-list">
+                            <div v-for="log in actionLog" :key="log.time" class="action-item" :class="'act-' + log.action.toLowerCase()">
+                                <span class="action-time">{{ log.time.split(' ')[1] }}</span>
+                                <span class="action-type">{{ log.action }}</span>
+                                <span class="action-prob">{{ (log.probability * 100).toFixed(0) }}%</span>
+                            </div>
+                            <div v-if="actionLog.length === 0" class="action-empty">Waiting for inference...</div>
+                        </div>
+                    </div>
                 </div>
             </section>
 
-            <!-- ─── Monitoring ─── -->
-            <section v-show="page === 'monitoring'" class="page">
-                <div class="page-header"><h1>Live Monitoring</h1></div>
-
-                <div class="monitor-grid">
-                    <div class="panel chart-panel-lg">
-                        <div class="panel-header"><h2>Frame Time</h2></div>
-                        <div class="chart-container chart-tall"><canvas id="frameTimeChart"></canvas></div>
-                    </div>
-                    <div class="panel gauge-panel">
-                        <div class="panel-header"><h2>AI Prediction</h2>
-                            <span class="prediction-action" :class="'act-' + prediction.action.toLowerCase()">{{ prediction.action.replace(/_/g, ' ') }}</span>
-                        </div>
-                        <div class="gauge-container">
-                            <svg class="gauge" viewBox="0 0 120 120">
-                                <circle class="gauge-track" cx="60" cy="60" r="50"/>
-                                <circle class="gauge-fill" cx="60" cy="60" r="50" :stroke="gaugeColor" :stroke-dasharray="gaugeDash" :class="{ 'gauge-pulse': prediction.probability > 0.6 }"/>
-                                <text class="gauge-value" x="60" y="55">{{ (prediction.probability * 100).toFixed(0) }}</text>
-                                <text class="gauge-label" x="60" y="72">% drop risk</text>
-                            </svg>
-                        </div>
-                        <div class="factors-list" v-if="prediction.factors.length">
-                            <span class="factor-tag" v-for="f in prediction.factors" :key="f">{{ f }}</span>
-                        </div>
-                    </div>
-                </div>
+            <!-- Performance Page -->
+            <section v-if="page === 'performance'" class="page">
+                <header class="page-header">
+                    <h1>Module Control & Performance</h1>
+                    <button @click="toggleModule('all')" class="btn btn-primary">RESTART ALL</button>
+                </header>
 
                 <div class="bottom-grid">
                     <div class="panel">
-                        <div class="panel-header"><h2>DPC / ISR Latency</h2></div>
-                        <div class="dpc-grid">
-                            <div class="dpc-stat"><span class="dpc-label">DPC</span><span class="dpc-value" :class="dpc.dpc_latency_us > 500 ? 'danger' : ''">{{ dpc.dpc_latency_us.toFixed(1) }}<span class="unit">us</span></span></div>
-                            <div class="dpc-stat"><span class="dpc-label">DPC Avg</span><span class="dpc-value">{{ dpc.dpc_avg_us.toFixed(1) }}<span class="unit">us</span></span></div>
-                            <div class="dpc-stat"><span class="dpc-label">DPC Max</span><span class="dpc-value warning">{{ dpc.dpc_max_us.toFixed(1) }}<span class="unit">us</span></span></div>
-                            <div class="dpc-stat"><span class="dpc-label">ISR</span><span class="dpc-value">{{ dpc.isr_latency_us.toFixed(1) }}<span class="unit">us</span></span></div>
-                            <div class="dpc-stat"><span class="dpc-label">ISR Avg</span><span class="dpc-value">{{ dpc.isr_avg_us.toFixed(1) }}<span class="unit">us</span></span></div>
-                            <div class="dpc-stat"><span class="dpc-label">ISR Max</span><span class="dpc-value">{{ dpc.isr_max_us.toFixed(1) }}<span class="unit">us</span></span></div>
-                        </div>
-                        <div class="chart-container chart-small"><canvas id="dpcChart"></canvas></div>
+                        <div class="panel-header"><h3>Frame Time Distribution</h3></div>
+                        <div class="chart-container"><canvas id="frameTimeChart"></canvas></div>
                     </div>
                     <div class="panel">
-                        <div class="panel-header"><h2>Action History</h2><span class="muted">{{ actionLog.length }} events</span></div>
-                        <div class="action-list">
-                            <div class="action-item" v-for="(a, i) in actionLog" :key="i" :class="'act-' + a.action.toLowerCase()">
-                                <span class="action-time mono">{{ a.time }}</span>
-                                <span class="action-type">{{ a.action.replace(/_/g, ' ') }}</span>
-                                <span class="action-prob mono">{{ (a.probability * 100).toFixed(0) }}%</span>
-                            </div>
-                            <div class="action-empty" v-if="!actionLog.length">Waiting for AI predictions...</div>
-                        </div>
+                        <div class="panel-header"><h3>DPC/ISR Profile</h3></div>
+                        <div class="chart-container"><canvas id="dpcChart"></canvas></div>
                     </div>
                 </div>
-            </section>
 
-            <!-- ─── Control Panel ─── -->
-            <section v-show="page === 'control'" class="page">
-                <div class="page-header"><h1>Control Panel</h1></div>
-
-                <div class="control-grid">
-                    <div class="control-card" v-for="(m, id) in modules" :key="id" :class="'border-' + m.status">
+                <div class="control-grid" style="margin-top: var(--gap)">
+                    <div v-for="(mod, id) in modules" :key="id" :class="['control-card', 'border-' + mod.status]">
                         <div class="control-card-top">
-                            <div class="control-icon">
-                                <span v-if="m.icon === 'sensor'">&#128225;</span>
-                                <span v-else-if="m.icon === 'brain'">&#129504;</span>
-                                <span v-else>&#9881;</span>
-                            </div>
+                            <div class="control-icon">{{ mod.icon === 'sensor' ? '📡' : mod.icon === 'brain' ? '🧠' : '⚙️' }}</div>
                             <div class="control-info">
-                                <h3>{{ m.label }}</h3>
-                                <p>{{ m.description }}</p>
+                                <h3>{{ mod.name }}</h3>
+                                <p>{{ mod.description }}</p>
                             </div>
                             <div class="control-toggle">
-                                <button class="toggle-btn" :class="{ on: m.status === 'running' }" @click="toggleModule(id)">
-                                    <span class="toggle-slider"></span>
+                                <button @click="toggleModule(id)" :class="['toggle-btn', { on: mod.status === 'running' }]">
+                                    <div class="toggle-slider"></div>
                                 </button>
                             </div>
                         </div>
                         <div class="control-details">
-                            <div class="detail-row"><span>Status</span><span class="status-badge" :class="m.status">{{ m.status }}</span></div>
-                            <div class="detail-row" v-if="m.pid"><span>PID</span><span class="mono">{{ m.pid }}</span></div>
-                            <div class="detail-row" v-if="m.uptime"><span>Uptime</span><span class="mono">{{ formatUptime(m.uptime) }}</span></div>
-                            <div class="detail-row" v-if="m.optional"><span>Type</span><span class="muted">Optional</span></div>
-                        </div>
-                        <div class="control-actions">
-                            <button class="btn btn-sm btn-success" @click="startModule(id)" :disabled="m.status === 'running'">Start</button>
-                            <button class="btn btn-sm btn-danger" @click="stopModule(id)" :disabled="m.status !== 'running'">Stop</button>
-                            <button class="btn btn-sm btn-ghost" @click="restartModule(id)" :disabled="m.status !== 'running'">Restart</button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Pipe Status -->
-                <div class="panel" style="margin-top: var(--gap)">
-                    <div class="panel-header"><h2>IPC Connections</h2></div>
-                    <div class="pipe-grid">
-                        <div class="pipe-card">
-                            <span class="status-dot-sm" :class="pipeStatus.telemetry_connected ? 'running' : 'stopped'"></span>
-                            <span>neuropace-telemetry</span>
-                            <span class="mono muted" v-if="pipeStatus.telemetry_stats">{{ pipeStatus.telemetry_stats.messagesReceived }} msgs</span>
-                        </div>
-                        <div class="pipe-card">
-                            <span class="status-dot-sm" :class="pipeStatus.prediction_connected ? 'running' : 'stopped'"></span>
-                            <span>neuropace-prediction</span>
-                            <span class="mono muted" v-if="pipeStatus.prediction_stats">{{ pipeStatus.prediction_stats.messagesReceived }} msgs</span>
-                        </div>
-                        <div class="pipe-card">
-                            <span class="status-dot-sm running"></span>
-                            <span>Dashboard WebSocket</span>
-                            <span class="mono muted">{{ pipeStatus.ws_clients || 0 }} clients</span>
+                            <div class="detail-row"><span>Status</span><span :class="'status-' + mod.status">{{ mod.status.toUpperCase() }}</span></div>
+                            <div class="detail-row"><span>PID</span><span>{{ mod.pid || 'N/A' }}</span></div>
+                            <div class="detail-row"><span>Uptime</span><span>{{ mod.uptime || '0s' }}</span></div>
                         </div>
                     </div>
                 </div>
             </section>
 
-            <!-- ─── Logs ─── -->
-            <section v-show="page === 'logs'" class="page">
-                <div class="page-header">
+            <!-- Logs Page -->
+            <section v-if="page === 'logs'" class="page">
+                <header class="page-header">
                     <h1>System Logs</h1>
                     <div class="header-actions">
-                        <select class="select-input" v-model="logFilter">
-                            <option value="all">All Levels</option>
-                            <option value="info">Info</option>
-                            <option value="warn">Warnings</option>
-                            <option value="error">Errors</option>
+                        <select v-model="logFilter" class="select-input">
+                            <option value="all">All Modules</option>
+                            <option v-for="(mod, id) in modules" :key="id" :value="id">{{ mod.name }}</option>
                         </select>
-                        <button class="btn btn-sm btn-ghost" @click="clearLogs">Clear</button>
-                        <label class="checkbox-label">
-                            <input type="checkbox" v-model="logAutoScroll"> Auto-scroll
-                        </label>
+                        <button @click="clearLogs" class="btn btn-ghost btn-sm">Clear</button>
                     </div>
-                </div>
-
-                <div class="log-tabs">
-                    <button class="log-tab" :class="{ active: logTab === 'all' }" @click="logTab = 'all'">All</button>
-                    <button class="log-tab" v-for="(m, id) in modules" :key="id"
-                        :class="{ active: logTab === id }" @click="logTab = id">{{ m.label }}</button>
-                </div>
+                </header>
 
                 <div class="log-viewer" ref="logViewer">
-                    <div class="log-line" v-for="(log, i) in filteredLogs" :key="i" :class="'log-' + log.level">
-                        <span class="log-time mono">{{ log.timestamp.slice(11, 23) }}</span>
-                        <span class="log-module">{{ log.module }}</span>
+                    <div v-for="(log, index) in filteredLogs" :key="index" :class="['log-line', 'log-' + log.level]">
+                        <span class="log-time">{{ log.timestamp.split('T')[1].split('.')[0] }}</span>
+                        <span class="log-module">{{ log.module.toUpperCase() }}</span>
                         <span class="log-level">{{ log.level.toUpperCase() }}</span>
                         <span class="log-msg">{{ log.message }}</span>
                     </div>
-                    <div class="log-empty" v-if="!filteredLogs.length">No logs yet. Start a module to see output.</div>
+                    <div v-if="filteredLogs.length === 0" class="log-empty">No log entries found.</div>
                 </div>
             </section>
         </main>
     </div>
 
-    <script src="js/vue.global.prod.js"></script>
-    <script src="js/chart-engine.js?v=3"></script>
-    <script src="js/app.js?v=3"></script>
+    <script>
+        // Suppress ResizeObserver loop limit exceeded error
+        window.addEventListener('error', e => {
+            if (e.message === 'ResizeObserver loop completed with undelivered notifications.' || e.message === 'ResizeObserver loop limit exceeded') {
+                e.stopImmediatePropagation();
+                return false;
+            }
+        });
+
+        // Error trapping script to log back to server
+        window.onerror = function(message, source, lineno, colno, error) {
+            console.error('JS Error:', message, 'at', source, lineno, ':', colno);
+            fetch('/api/debug-log', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    level: 'error',
+                    message: message,
+                    details: { source, lineno, colno, stack: error ? error.stack : '' }
+                })
+            }).catch(e => console.warn('Failed to send error log to server', e));
+            return false;
+        };
+    </script>
 </body>
 </html>

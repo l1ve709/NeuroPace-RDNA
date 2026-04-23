@@ -55,6 +55,11 @@ target_include_directories(neuropace-actuator PRIVATE
 if(ADLX_FOUND)
     target_include_directories(neuropace-actuator PRIVATE
         ${ADLX_SDK_DIR}/SDK/Include
+        ${ADLX_SDK_DIR}/SDK/ADLXHelper/Windows/Cpp
+    )
+    target_sources(neuropace-actuator PRIVATE
+        ${ADLX_SDK_DIR}/SDK/ADLXHelper/Windows/Cpp/ADLXHelper.cpp
+        ${ADLX_SDK_DIR}/SDK/Platform/Windows/WinAPIs.cpp
     )
     target_compile_definitions(neuropace-actuator PRIVATE NEUROPACE_HAS_ADLX=1)
 endif()

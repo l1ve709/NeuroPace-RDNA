@@ -20,6 +20,8 @@ inline const std::vector<std::wstring> kKnownGameProcesses = {
     L"overwatch.exe",
     L"destiny2.exe",
     L"EscapeFromTarkov.exe",
+    L"PioneerGame.exe",
+    L"ArcRaiders.exe",
 };
 struct ThreadState {
     DWORD threadId;

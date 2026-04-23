@@ -5,6 +5,7 @@
 #ifdef NEUROPACE_HAS_ADLX
     #include "ADLX.h"
     #include "IGPUTuning.h"
+    #include "IGPUManualPowerTuning.h"
     #include "ADLXHelper.h"
     using namespace adlx;
 #endif

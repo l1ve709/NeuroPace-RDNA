@@ -1,5 +1,15 @@
-const { createApp, ref, reactive, computed, onMounted, onUnmounted, nextTick, watch } = Vue;
-const app = createApp({
+(function() {
+    window.addEventListener('DOMContentLoaded', () => {
+        console.log('[DASHBOARD] DOM Loaded. checking for Vue...');
+        if (typeof Vue === 'undefined') {
+            console.error('[FATAL] Vue.js is not loaded! Render cancelled.');
+            document.body.innerHTML = '<div style="color:white;padding:50px;font-family:sans-serif;"><h1>Fatal Error</h1><p>Vue.js failed to load. Please check your internet connection or server status.</p></div>';
+            return;
+        }
+        
+        const { createApp, ref, reactive, computed, onMounted, onUnmounted, nextTick, watch } = Vue;
+        console.log('[DASHBOARD] Initializing Vue application...');
+        const vueApp = createApp({
     setup() {
         const page = ref('overview');
         let ws = null;
@@ -58,7 +68,7 @@ const app = createApp({
         });
         function connectWS() {
             const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-            ws = new WebSocket(`${proto}
+            ws = new WebSocket(`${proto}//${location.host}`);
             ws.onopen = () => { wsConnected.value = true; };
             ws.onclose = () => {
                 wsConnected.value = false;
@@ -237,4 +247,8 @@ const app = createApp({
         };
     },
 });
-app.mount('#app');
+        console.log('[DASHBOARD] Mounting Vue application to #app...');
+        vueApp.mount('#app');
+        console.log('[DASHBOARD] Vue application mounted successfully.');
+    });
+})();
