@@ -8,6 +8,9 @@
 #include <format>
 #include <csignal>
 #include <atomic>
+#include <thread>
+#include <chrono>
+
 static std::atomic<bool> g_shutdown{false};
 BOOL WINAPI ConsoleCtrlHandler(DWORD ctrlType) {
     switch (ctrlType) {
