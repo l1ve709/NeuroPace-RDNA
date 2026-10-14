@@ -123,7 +123,8 @@ class TestPredictorStats:
         predictor = Predictor()
         assert predictor.stats.total_predictions == 0
         assert predictor.stats.avg_inference_time_ms == 0.0
-    def test_stats_increment_on_predict(self):
+    def test_stats_not_incremented_without_model(self):
+        """predict() must not count inferences when no model is loaded."""
         predictor = Predictor()
         features = np.zeros(NUM_FEATURES, dtype=np.float64)
         predictor.predict(features)

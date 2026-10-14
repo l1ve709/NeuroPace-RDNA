@@ -53,8 +53,9 @@ def on_message(ws, message):
         gpu = data.get("gpu", {})
         dpc = data.get("dpc_isr", {})
         ft = data.get("frame_time_ms", 0)
-        fps_val = (1000.0 / ft) if ft > 0 else 0
-        fps_val = gpu.get("fps", 0)
+        driver_fps = gpu.get("fps", 0)
+        # Prefer the driver FPS counter; fall back to the derived value.
+        fps_val = driver_fps if driver_fps else ((1000.0 / ft) if ft > 0 else 0)
         fps_text = "SAFE" if fps_val == 0 else str(round(fps_val, 1))
         row = {
             "timestamp": time.strftime("%H:%M:%S"),

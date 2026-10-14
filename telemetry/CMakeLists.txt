@@ -98,3 +98,39 @@ endif()
 
 # ── Install ─────────────────────────────────────────────────────
 install(TARGETS neuropace-telemetry RUNTIME DESTINATION bin)
+
+# ── Tests ────────────────────────────────────────────────────────
+option(NEUROPACE_BUILD_TESTS "Build unit tests" ON)
+if(NEUROPACE_BUILD_TESTS)
+    enable_testing()
+
+    add_executable(test_etw
+        tests/test_etw.cpp
+        src/etw_collector.cpp
+    )
+    target_include_directories(test_etw PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+    target_link_libraries(test_etw PRIVATE nlohmann_json::nlohmann_json tdh advapi32)
+    target_compile_definitions(test_etw PRIVATE
+        _WIN32_WINNT=0x0A00 NOMINMAX WIN32_LEAN_AND_MEAN UNICODE _UNICODE)
+    if(MSVC)
+        target_compile_options(test_etw PRIVATE /W4 /WX- /permissive- /Zc:__cplusplus /utf-8 $<$<CONFIG:Release>:/UNDEBUG>)
+    else()
+        target_compile_options(test_etw PRIVATE -Wall -Wextra -Wpedantic -UNDEBUG)
+    endif()
+    add_test(NAME etw_collector COMMAND test_etw)
+
+    add_executable(test_adlx_mock
+        tests/test_adlx_mock.cpp
+        src/adlx_sensor.cpp
+    )
+    target_include_directories(test_adlx_mock PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+    target_link_libraries(test_adlx_mock PRIVATE nlohmann_json::nlohmann_json ole32)
+    target_compile_definitions(test_adlx_mock PRIVATE
+        _WIN32_WINNT=0x0A00 NOMINMAX WIN32_LEAN_AND_MEAN UNICODE _UNICODE)
+    if(MSVC)
+        target_compile_options(test_adlx_mock PRIVATE /W4 /WX- /permissive- /Zc:__cplusplus /utf-8 $<$<CONFIG:Release>:/UNDEBUG>)
+    else()
+        target_compile_options(test_adlx_mock PRIVATE -Wall -Wextra -Wpedantic -UNDEBUG)
+    endif()
+    add_test(NAME adlx_mock COMMAND test_adlx_mock)
+endif()

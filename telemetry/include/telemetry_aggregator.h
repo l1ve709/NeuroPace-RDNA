@@ -89,8 +89,15 @@ private:
         frame.sequence_id  = m_sequenceId.fetch_add(1);
         frame.dpc_isr = m_etw.GetLatestMetrics();
         frame.gpu = m_adlx.GetLatestMetrics();
-        frame.frame_time_ms = 0.0;
-        frame.fps_instant   = 0.0;
+        // Frame pacing metrics are derived from the ADLX FPS counter
+        // (present-event capture is not implemented yet).
+        if (frame.gpu.fps > 0) {
+            frame.fps_instant   = static_cast<double>(frame.gpu.fps);
+            frame.frame_time_ms = 1000.0 / frame.fps_instant;
+        } else {
+            frame.fps_instant   = 0.0;
+            frame.frame_time_ms = 0.0;
+        }
         return frame;
     }
     void PrintFrame(const TelemetryFrame& f) {

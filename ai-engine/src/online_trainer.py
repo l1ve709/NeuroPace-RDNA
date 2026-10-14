@@ -92,8 +92,11 @@ class OnlineTrainer:
             from sklearn.model_selection import train_test_split
             from skl2onnx import convert_sklearn
             from skl2onnx.common.data_types import FloatTensorType
+            # stratify requires at least 2 samples per class
+            class_counts = np.bincount(y.astype(np.int64))
+            stratify = y if (class_counts.min() >= 2) else None
             X_train, X_test, y_train, y_test = train_test_split(
-                X, y, test_size=0.2, random_state=42, stratify=y
+                X, y, test_size=0.2, random_state=42, stratify=stratify
             )
             clf = RandomForestClassifier(
                 n_estimators=150,

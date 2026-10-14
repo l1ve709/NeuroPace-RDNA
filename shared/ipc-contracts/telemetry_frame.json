@@ -42,7 +42,8 @@
         "vram_used_mb": { "type": "integer", "description": "VRAM usage (MB)" },
         "vram_total_mb": { "type": "integer", "description": "Total VRAM capacity (MB)" },
         "gpu_utilization_pct": { "type": "number", "description": "GPU utilization (0-100%)" },
-        "fan_speed_rpm": { "type": "integer", "description": "Fan speed (RPM)" }
+        "fan_speed_rpm": { "type": "integer", "description": "Fan speed (RPM)" },
+        "fps": { "type": "integer", "description": "Current FPS reported by the ADLX present counter" }
       }
     },
     "frame_time_ms": {

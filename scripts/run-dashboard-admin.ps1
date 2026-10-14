@@ -1,2 +1,8 @@
-cd 'C:\Users\TR\Documents\NeuroPace RDNA'
-node dashboard/server/index.js
+#Requires -RunAsAdministrator
+# ============================================================================
+# NeuroPace RDNA — Launch the Dashboard server elevated
+# ============================================================================
+
+$ProjectRoot = Split-Path -Parent $PSScriptRoot
+Set-Location (Join-Path $ProjectRoot "dashboard")
+node server/index.js

@@ -94,18 +94,30 @@ void IpcPublisher::AcceptLoop() {
                     ::CancelIo(client.handle);
                     ::CloseHandle(ov.hEvent);
                     ::CloseHandle(client.handle);
+                    if (client.writeEvent) {
+                        ::CloseHandle(client.writeEvent);
+                        client.writeEvent = nullptr;
+                    }
                     break;
                 }
                 DWORD bytesTransferred = 0;
                 if (!::GetOverlappedResult(client.handle, &ov, &bytesTransferred, FALSE)) {
                     ::CloseHandle(ov.hEvent);
                     ::CloseHandle(client.handle);
+                    if (client.writeEvent) {
+                        ::CloseHandle(client.writeEvent);
+                        client.writeEvent = nullptr;
+                    }
                     continue;
                 }
             } else if (err == ERROR_PIPE_CONNECTED) {
             } else {
                 ::CloseHandle(ov.hEvent);
                 ::CloseHandle(client.handle);
+                    if (client.writeEvent) {
+                        ::CloseHandle(client.writeEvent);
+                        client.writeEvent = nullptr;
+                    }
                 if (m_running.load()) {
                     SetError(std::format("ConnectNamedPipe failed: error {}", err));
                 }

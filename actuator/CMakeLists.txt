@@ -92,3 +92,40 @@ else()
 endif()
 
 install(TARGETS neuropace-actuator RUNTIME DESTINATION bin)
+
+# ── Tests ────────────────────────────────────────────────────────
+option(NEUROPACE_BUILD_TESTS "Build unit tests" ON)
+if(NEUROPACE_BUILD_TESTS)
+    enable_testing()
+
+    add_executable(test_safety_guard
+        tests/test_safety_guard.cpp
+        src/safety_guard.cpp
+    )
+    target_include_directories(test_safety_guard PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+    target_link_libraries(test_safety_guard PRIVATE nlohmann_json::nlohmann_json advapi32)
+    target_compile_definitions(test_safety_guard PRIVATE
+        _WIN32_WINNT=0x0A00 NOMINMAX WIN32_LEAN_AND_MEAN UNICODE _UNICODE)
+    if(MSVC)
+        target_compile_options(test_safety_guard PRIVATE /W4 /WX- /permissive- /Zc:__cplusplus /utf-8 $<$<CONFIG:Release>:/UNDEBUG>)
+    else()
+        target_compile_options(test_safety_guard PRIVATE -Wall -Wextra -Wpedantic -UNDEBUG)
+    endif()
+    add_test(NAME safety_guard COMMAND test_safety_guard)
+
+    add_executable(test_scheduler
+        tests/test_scheduler.cpp
+        src/process_scheduler.cpp
+        src/safety_guard.cpp
+    )
+    target_include_directories(test_scheduler PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+    target_link_libraries(test_scheduler PRIVATE nlohmann_json::nlohmann_json advapi32)
+    target_compile_definitions(test_scheduler PRIVATE
+        _WIN32_WINNT=0x0A00 NOMINMAX WIN32_LEAN_AND_MEAN UNICODE _UNICODE)
+    if(MSVC)
+        target_compile_options(test_scheduler PRIVATE /W4 /WX- /permissive- /Zc:__cplusplus /utf-8 $<$<CONFIG:Release>:/UNDEBUG>)
+    else()
+        target_compile_options(test_scheduler PRIVATE -Wall -Wextra -Wpedantic -UNDEBUG)
+    endif()
+    add_test(NAME scheduler COMMAND test_scheduler)
+endif()
