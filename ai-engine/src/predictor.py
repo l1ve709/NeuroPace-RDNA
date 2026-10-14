@@ -1,5 +1,6 @@
 from __future__ import annotations
 import logging
+import math
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -149,19 +150,27 @@ class Predictor:
             return result
         t_end = time.perf_counter()
         result.inference_time_ms = (t_end - t_start) * 1000.0
+        proba = None
         if len(outputs) >= 2:
-            probabilities = outputs[1]
-            if hasattr(probabilities, "shape") and len(probabilities.shape) == 2:
-                result.frame_drop_probability = float(probabilities[0, 1])
-            elif isinstance(probabilities, list) and len(probabilities) > 0:
-                if isinstance(probabilities[0], dict):
-                    result.frame_drop_probability = float(
-                        probabilities[0].get(1, 0.0)
-                    )
-                else:
-                    result.frame_drop_probability = float(probabilities[0][-1])
+            proba = outputs[1]
         elif len(outputs) == 1:
-            result.frame_drop_probability = float(np.clip(outputs[0][0], 0.0, 1.0))
+            proba = outputs[0]
+        if proba is not None:
+            if hasattr(proba, "shape") and len(proba.shape) == 2 and proba.shape[-1] >= 2:
+                # skl2onnx layout: (batch, 2) -> column 1 is P(class=1)
+                result.frame_drop_probability = float(proba[0, 1])
+            elif isinstance(proba, list) and len(proba) > 0:
+                if isinstance(proba[0], dict):
+                    result.frame_drop_probability = float(proba[0].get(1, 0.0))
+                else:
+                    result.frame_drop_probability = float(proba[0][-1])
+            else:
+                # Single sigmoid output: may be a raw probability or a logit.
+                flat = np.asarray(proba, dtype=np.float64).reshape(-1)
+                val = float(flat[-1]) if flat.size > 1 else float(flat[0])
+                if val < 0.0 or val > 1.0:
+                    val = 1.0 / (1.0 + math.exp(-val))  # logit -> probability
+                result.frame_drop_probability = float(np.clip(val, 0.0, 1.0))
         prob = result.frame_drop_probability
         result.confidence = abs(prob - 0.5) * 2.0  
         if prob >= self._config.threshold_combined:

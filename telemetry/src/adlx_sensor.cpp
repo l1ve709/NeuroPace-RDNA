@@ -176,15 +176,22 @@ GpuMetrics AdlxSensor::GenerateMockMetrics() {
     std::uniform_real_distribution<double> dist(-1.0, 1.0);
     double jitter = dist(rng);
     GpuMetrics m;
-    m.gpu_clock_mhz = static_cast<uint32_t>(2500 * load_cycle + jitter * 10);
+    // Keep mock values inside the ranges validated by tests/test_adlx_mock.cpp.
+    m.gpu_clock_mhz = static_cast<uint32_t>(
+        std::clamp(2500.0 * load_cycle + jitter * 10.0, 2200.0, 2620.0));
     m.mem_clock_mhz = 2250;
-    m.gpu_temp_c = static_cast<uint32_t>(60 * load_cycle + jitter);
+    m.gpu_temp_c = static_cast<uint32_t>(
+        std::clamp(60.0 * load_cycle + jitter, 55.0, 95.0));
     m.hotspot_temp_c = m.gpu_temp_c + 10;
-    m.gpu_tgp_w = static_cast<uint32_t>(280 * load_cycle);
-    m.gpu_utilization_pct = 95.0 * load_cycle;
+    m.gpu_tgp_w = static_cast<uint32_t>(
+        std::clamp(280.0 * load_cycle, 250.0, 355.0));
+    m.gpu_utilization_pct = std::clamp(95.0 * load_cycle, 0.0, 100.0);
     m.vram_used_mb = 12000;
     m.vram_total_mb = 20480;
     m.fan_speed_rpm = static_cast<uint32_t>(1500 * load_cycle);
+    // Derive a plausible FPS / frame time from the simulated load.
+    const double frameTimeMs = std::clamp(6.9 / load_cycle + jitter * 0.05, 5.0, 20.0);
+    m.fps = static_cast<uint32_t>(1000.0 / frameTimeMs);
     return m;
 }
 GpuMetrics AdlxSensor::GetLatestMetrics() const {

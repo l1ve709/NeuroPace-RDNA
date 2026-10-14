@@ -127,7 +127,7 @@ class IpcSubscriber:
             )
             if hr != 0:
                 logger.warning("ReadFile returned non-zero HRESULT: %d", hr)
-                self.disconnect()
+                self._handle_disconnect()
                 return []
             if not data:
                 return []
@@ -140,10 +140,10 @@ class IpcSubscriber:
             return frames
         except pywintypes.error as e:
             if e.winerror in (ERROR_BROKEN_PIPE, ERROR_NO_DATA):
-                self.disconnect()
+                self._handle_disconnect()
             else:
                 logger.error("Pipe read error: [%d] %s", e.winerror, e.strerror)
-                self.disconnect()
+                self._handle_disconnect()
             return []
     def stream(self) -> Generator[dict, None, None]:
         """

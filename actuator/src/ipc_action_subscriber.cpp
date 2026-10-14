@@ -89,7 +89,7 @@ void IpcActionSubscriber::ReadLoop() {
                 }
                 std::unique_lock slock(m_statsMutex);
                 ++m_stats.commands_received;
-            } catch (const nlohmann::json::exception& e) {
+            } catch (const nlohmann::json::exception&) {
                 std::unique_lock slock(m_statsMutex);
                 ++m_stats.parse_errors;
             }
@@ -121,14 +121,17 @@ bool IpcActionSubscriber::Connect() {
     return true;
 }
 void IpcActionSubscriber::Disconnect() {
+    const bool wasConnected = m_connected.exchange(false);
     if (m_pipeHandle != INVALID_HANDLE_VALUE) {
         ::CloseHandle(m_pipeHandle);
         m_pipeHandle = INVALID_HANDLE_VALUE;
     }
-    m_connected.store(false);
     m_ndjson.Reset();
-    std::unique_lock lock(m_statsMutex);
-    ++m_stats.reconnect_count;
+    if (wasConnected) {
+        // Count only real connection losses, not idle disconnects.
+        std::unique_lock lock(m_statsMutex);
+        ++m_stats.reconnect_count;
+    }
 }
 void IpcActionSubscriber::SetError(const std::string& msg) {
     std::unique_lock lock(m_errorMutex);

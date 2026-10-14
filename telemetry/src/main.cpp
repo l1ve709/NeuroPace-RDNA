@@ -2,7 +2,7 @@
 #include "etw_collector.h"
 #include "adlx_sensor.h"
 #include "ipc_publisher.h"
-#include "telemetry_aggregator.cpp"   
+#include "telemetry_aggregator.h"   
 #include <windows.h>
 #include <iostream>
 #include <format>

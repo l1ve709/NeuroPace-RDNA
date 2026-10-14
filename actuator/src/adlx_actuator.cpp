@@ -77,13 +77,13 @@ bool AdlxActuator::Initialize() {
     return true;
 }
 bool AdlxActuator::ApplyBoost(int32_t boost_w) {
+    std::unique_lock lock(m_stateMutex);
     boost_w = (std::min)(boost_w, m_config.max_boost_w);
     int32_t target_tgp = m_state.default_tgp_w + boost_w;
     target_tgp = (std::min)(target_tgp, m_config.absolute_max_tgp_w);
     if (!SetTgpLimit(target_tgp)) {
         return false;
     }
-    std::unique_lock lock(m_stateMutex);
     m_state.boost_applied_w = boost_w;
     m_state.boost_active    = true;
     m_state.boost_start     = std::chrono::steady_clock::now();
@@ -95,11 +95,11 @@ bool AdlxActuator::ApplyBoost(int32_t boost_w) {
     return true;
 }
 bool AdlxActuator::RevertToDefault() {
+    std::unique_lock lock(m_stateMutex);
     if (!m_state.boost_active) return true;
     if (!SetTgpLimit(m_state.default_tgp_w)) {
         return false;
     }
-    std::unique_lock lock(m_stateMutex);
     m_state.boost_applied_w = 0;
     m_state.boost_active    = false;
     m_state.current_tgp_w   = m_state.default_tgp_w;
@@ -128,7 +128,7 @@ TgpState AdlxActuator::GetState() const {
     std::shared_lock lock(m_stateMutex);
     return m_state;
 }
-bool AdlxActuator::SetTgpLimit(int32_t tgp_w) {
+bool AdlxActuator::SetTgpLimit([[maybe_unused]] int32_t tgp_w) {
     if (!m_adlxAvailable) {
         return true;
     }

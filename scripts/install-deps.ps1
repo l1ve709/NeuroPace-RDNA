@@ -50,23 +50,14 @@ if (Test-Path $requirements) {
 Write-Host ""
 
 # ── Node.js Dependencies ───────────────────────────────────────────────
-$serverDir = Join-Path $ProjectRoot "dashboard\server"
-$clientDir = Join-Path $ProjectRoot "dashboard\client"
+$dashboardDir = Join-Path $ProjectRoot "dashboard"
 
-if (Test-Path (Join-Path $serverDir "package.json")) {
-    Write-Host "[NODE] Installing Dashboard Server dependencies..." -ForegroundColor Yellow
-    Push-Location $serverDir
+if (Test-Path (Join-Path $dashboardDir "package.json")) {
+    Write-Host "[NODE] Installing Dashboard dependencies..." -ForegroundColor Yellow
+    Push-Location $dashboardDir
     npm install
     Pop-Location
-    Write-Host "[NODE] Server deps — Done." -ForegroundColor Green
-}
-
-if (Test-Path (Join-Path $clientDir "package.json")) {
-    Write-Host "[NODE] Installing Dashboard Client dependencies..." -ForegroundColor Yellow
-    Push-Location $clientDir
-    npm install
-    Pop-Location
-    Write-Host "[NODE] Client deps — Done." -ForegroundColor Green
+    Write-Host "[NODE] Dashboard deps — Done." -ForegroundColor Green
 }
 
 Write-Host ""

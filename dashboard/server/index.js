@@ -6,6 +6,14 @@ const { PipeBridge } = require('./pipe-bridge');
 const { ProcessManager } = require('./process-manager');
 const config = require('./config');
 
+// Discord Rich Presence (optional - fails gracefully when Discord is absent)
+try {
+    const { initRPC } = require('./rpc');
+    initRPC();
+} catch (err) {
+    console.log('[RPC] Discord Rich Presence disabled:', err.message);
+}
+
 const app = express();
 app.use(express.json());
 

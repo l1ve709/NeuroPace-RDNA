@@ -86,7 +86,8 @@ int main() {
                 continue;
             }
             if (!guard.ValidateAction(cmd, scheduler.GetTargetPid())) {
-                guard.LogAction(cmd, scheduler.GetTargetPid(), false, "Rejected by SafetyGuard");
+                // ValidateAction already recorded a detailed audit entry for the
+                // rejection (rate limit / confidence / caps / no PID attached).
                 continue;
             }
             bool success = false;

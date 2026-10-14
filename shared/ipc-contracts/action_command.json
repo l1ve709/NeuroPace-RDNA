@@ -56,6 +56,10 @@
           "description": "Suggested thread priority level"
         }
       }
+    },
+    "inference_time_ms": {
+      "type": "number",
+      "description": "Time taken by the model inference (ms)"
     }
   }
 }
