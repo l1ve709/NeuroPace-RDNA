@@ -19,7 +19,7 @@ app.use(express.json({ limit: '16kb' }));
 // Local-only management API: block common cross-site browser requests and DNS rebinding.
 app.use('/api', (req, res, next) => {
     const host = req.headers.host || '';
-    if (!/^(localhost|127\\.0\\.0\\.1)(:\\d+)?$/i.test(host)) return res.sendStatus(403);
+    if (!/^(localhost|127\.0\.0\.1)(:\d+)?$/i.test(host)) return res.sendStatus(403);
     if (req.headers.origin) {
         let url;
         try { url = new URL(req.headers.origin); } catch { return res.sendStatus(403); }
