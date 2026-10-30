@@ -141,7 +141,12 @@ class Predictor:
         result.timestamp_us = int(time.time() * 1_000_000)
         if not self._model_loaded or self._session is None:
             return result
+        if features.size != NUM_FEATURES or not np.all(np.isfinite(features)):
+            logger.warning("Rejecting malformed telemetry")
+            return result
         input_array = features.reshape(1, -1).astype(np.float32)
+        if not np.all(np.isfinite(input_array)):
+            return result
         t_start = time.perf_counter()
         try:
             outputs = self._session.run(None, {self._input_name: input_array})
@@ -171,6 +176,10 @@ class Predictor:
                 if val < 0.0 or val > 1.0:
                     val = 1.0 / (1.0 + math.exp(-val))  # logit -> probability
                 result.frame_drop_probability = float(np.clip(val, 0.0, 1.0))
+        if not math.isfinite(result.frame_drop_probability):
+            logger.warning("Rejecting non-finite model output")
+            return PredictionResult(timestamp_us=result.timestamp_us)
+        result.frame_drop_probability = float(np.clip(result.frame_drop_probability, 0.0, 1.0))
         prob = result.frame_drop_probability
         result.confidence = abs(prob - 0.5) * 2.0  
         if prob >= self._config.threshold_combined:

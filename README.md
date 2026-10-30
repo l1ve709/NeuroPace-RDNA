@@ -4,12 +4,12 @@
 
 ### Eliminate micro-stutter on AMD Radeon GPUs. Automatically.
 
-*The world's first predictive latency management layer for gaming PCs.*
+*An experimental predictive latency management layer for Windows gaming PCs.*
 
 [![Platform](https://img.shields.io/badge/Platform-Windows%2010%2F11-0078D6?style=flat-square&logo=windows)](https://www.microsoft.com/windows)
 [![Architecture](https://img.shields.io/badge/GPU-AMD%20Radeon-ED1C24?style=flat-square&logo=amd)](https://www.amd.com)
 [![C++](https://img.shields.io/badge/C%2B%2B-20-00599C?style=flat-square&logo=cplusplus)](https://isocpp.org/)
-[![License](https://img.shields.io/badge/License-Proprietary-333333?style=flat-square)]()
+[![License](https://img.shields.io/badge/License-MIT-333333?style=flat-square)]()
 [![Release](https://img.shields.io/badge/Release-v0.1.0--beta-blue?style=flat-square)]()
 
 ---
@@ -51,7 +51,7 @@ Current solutions react **after** the damage is done. NeuroPace predicts the pro
 
 Every optimizer on the market today is **reactive** — it sees a stutter, then tries to fix it. By then, the damage is already on your screen.
 
-NeuroPace is **predictive**. It continuously analyzes rolling windows of 1,000+ telemetry samples — DPC latency patterns, interrupt density, GPU queue depth, frametime variance, CPU core state, VRAM pressure — and calculates the probability of the *next* frame stuttering.
+NeuroPace is **predictive**. It continuously analyzes rolling windows of up to 200 telemetry samples by default — DPC latency patterns, interrupt density, GPU queue depth, frametime variance, CPU core state, VRAM pressure — and calculates the probability of the *next* frame stuttering.
 
 When risk is detected:
 - Thread migration to isolated cores
@@ -164,7 +164,7 @@ Four decoupled microservices. Zero game memory access. Named Pipe IPC with < 1ms
 
 ## Anti-Cheat Compliance
 
-NeuroPace will **never** trigger anti-cheat systems:
+NeuroPace is designed to minimize anti-cheat interaction; compatibility cannot be guaranteed:
 
 - **Zero game memory access** — never reads or writes to any game process
 - **Zero kernel drivers** — purely Ring-3 (User-Mode), no `.sys` files
@@ -172,7 +172,7 @@ NeuroPace will **never** trigger anti-cheat systems:
 - **Zero restricted handles** — static validation against `VM_READ` / `GET_CONTEXT`
 - **Full audit trail** — every decision logged with timestamps
 
-Compatible with EasyAntiCheat, Vanguard, BattlEye, FACEIT AC, and all major platforms.
+Compatibility with individual anti-cheat products has not been independently certified.
 
 See: [`docs/anti-cheat-compliance.md`](docs/anti-cheat-compliance.md)
 
@@ -282,7 +282,7 @@ NeuroPace-RDNA/
 ## FAQ
 
 **Will this get me banned?**
-No. NeuroPace never touches game memory. It only reads OS-level metrics and adjusts system parameters. See [Anti-Cheat Compliance](docs/anti-cheat-compliance.md).
+No guarantee can be made. NeuroPace is designed to avoid game memory access. It only reads OS-level metrics and adjusts system parameters. See [Anti-Cheat Compliance](docs/anti-cheat-compliance.md).
 
 **Does it work with NVIDIA?**
 Not yet. NeuroPace is built for AMD RDNA using the ADLX SDK. NVIDIA support would require NVAPI/NVML integration.

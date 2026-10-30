@@ -2,6 +2,7 @@
 #include "../include/action_types.h"
 #include <iostream>
 #include <cassert>
+#include <limits>
 using namespace neuropace;
 void test_no_action_always_passes() {
     SafetyConfig config;
@@ -128,7 +129,24 @@ void test_json_deserialization() {
     assert(cmd.params.thread_priority == "ABOVE_NORMAL");
     std::cout << "[TEST] test_json_deserialization PASSED\n";
 }
+void test_invalid_numeric_values() {
+    SafetyConfig config;
+    config.enable_audit_log = false;
+    SafetyGuard guard(config);
+    ActionCommand cmd;
+    cmd.action = ActionType::BOOST_TGP;
+    cmd.params.thread_priority = "NORMAL";
+    cmd.confidence = 0.9;
+    cmd.params.tgp_boost_w = -1;
+    assert(!guard.ValidateAction(cmd, 1234));
+    cmd.params.tgp_boost_w = 10;
+    cmd.confidence = std::numeric_limits<double>::quiet_NaN();
+    assert(!guard.ValidateAction(cmd, 1234));
+    cmd.confidence = 1.1;
+    assert(!guard.ValidateAction(cmd, 1234));
+}
 int main() {
+    test_invalid_numeric_values();
     std::cout << "========================================\n";
     std::cout << "  NeuroPace RDNA -- Safety Guard Tests\n";
     std::cout << "========================================\n\n";

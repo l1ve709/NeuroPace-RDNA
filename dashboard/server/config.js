@@ -1,5 +1,6 @@
 module.exports = {
     port: 3200,
+    host: '127.0.0.1',
     pipes: {
         telemetry: {
             path: String.raw`\\.\pipe\neuropace-telemetry`,

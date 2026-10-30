@@ -131,3 +131,26 @@ class TestPredictorStats:
         assert predictor.stats.total_predictions == 0
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
+
+
+class TestInvalidInputs:
+    def test_nan_telemetry_fails_closed(self):
+        class MockSession:
+            def run(self, *_args, **_kwargs):
+                raise AssertionError("Model must not run")
+        predictor = Predictor()
+        predictor._session = MockSession()
+        predictor._model_loaded = True
+        features = np.zeros(NUM_FEATURES)
+        features[0] = np.nan
+        assert predictor.predict(features).action == ActionType.NO_ACTION
+
+    def test_nan_prediction_fails_closed(self):
+        class MockSession:
+            def run(self, *_args, **_kwargs):
+                return [np.array([[0.0, np.nan]])]
+        predictor = Predictor()
+        predictor._session = MockSession()
+        predictor._input_name = "features"
+        predictor._model_loaded = True
+        assert predictor.predict(np.zeros(NUM_FEATURES)).action == ActionType.NO_ACTION

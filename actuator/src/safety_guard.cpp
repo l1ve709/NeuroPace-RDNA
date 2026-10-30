@@ -3,6 +3,7 @@
 #include <format>
 #include <chrono>
 #include <algorithm>
+#include <cmath>
 namespace neuropace {
 SafetyGuard::SafetyGuard(const SafetyConfig& config)
     : m_config(config)
@@ -39,7 +40,7 @@ bool SafetyGuard::ValidateAction(const ActionCommand& cmd, DWORD targetPid) {
         ++m_approvedCount;
         return true;
     }
-    if (cmd.confidence < m_config.min_confidence) {
+    if (!std::isfinite(cmd.confidence) || cmd.confidence < 0.0 || cmd.confidence > 1.0 || cmd.confidence < m_config.min_confidence) {
         ++m_rejectedCount;
         WriteAuditEntry({
             cmd.timestamp_us,
@@ -66,7 +67,7 @@ bool SafetyGuard::ValidateAction(const ActionCommand& cmd, DWORD targetPid) {
         });
         return false;
     }
-    if (cmd.params.tgp_boost_w > static_cast<int>(m_config.max_tgp_boost_w)) {
+    if (cmd.params.tgp_boost_w < 0 || cmd.params.tgp_boost_w > static_cast<int>(m_config.max_tgp_boost_w)) {
         ++m_rejectedCount;
         WriteAuditEntry({
             cmd.timestamp_us,
