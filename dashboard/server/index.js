@@ -15,7 +15,20 @@ try {
 }
 
 const app = express();
-app.use(express.json());
+app.use(express.json({ limit: '16kb' }));
+// Local-only management API: block common cross-site browser requests and DNS rebinding.
+app.use('/api', (req, res, next) => {
+    const host = req.headers.host || '';
+    if (!/^(localhost|127\.0\.0\.1)(:\d+)?$/i.test(host)) return res.sendStatus(403);
+    if (req.headers.origin) {
+        let url;
+        try { url = new URL(req.headers.origin); } catch { return res.sendStatus(403); }
+        if (url.protocol !== 'http:' || !['localhost', '127.0.0.1'].includes(url.hostname) ||
+            Number(url.port || 80) !== Number(config.port || 3200)) return res.sendStatus(403);
+    }
+    if (!['GET', 'HEAD'].includes(req.method) && req.get('X-NeuroPace-Control') !== '1') return res.sendStatus(403);
+    next();
+});
 
 const publicPath = path.resolve(__dirname, '..', 'public');
 console.log(`[HTTP] Serving static files from: ${publicPath}`);
@@ -157,7 +170,7 @@ console.log('');
 telemetryBridge.start();
 predictionBridge.start();
 
-server.listen(config.port || 3200, () => {
+server.listen(config.port || 3200, config.host || '127.0.0.1', () => {
     console.log(`[HTTP] Control Center: http://localhost:${config.port || 3200}`);
     console.log(`[WS]   WebSocket:      ws://localhost:${config.port || 3200}`);
     console.log(`[API]  REST API:       http://localhost:${config.port || 3200}/api/modules`);

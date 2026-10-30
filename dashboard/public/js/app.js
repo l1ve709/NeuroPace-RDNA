@@ -139,20 +139,20 @@
             }
         }
         async function startModule(id) {
-            await fetch(`/api/modules/${id}/start`, { method: 'POST' });
+            await fetch(`/api/modules/${id}/start`, { method: 'POST', headers: { 'X-NeuroPace-Control': '1' } });
         }
         async function stopModule(id) {
-            await fetch(`/api/modules/${id}/stop`, { method: 'POST' });
+            await fetch(`/api/modules/${id}/stop`, { method: 'POST', headers: { 'X-NeuroPace-Control': '1' } });
         }
         async function restartModule(id) {
-            await fetch(`/api/modules/${id}/stop`, { method: 'POST' });
-            setTimeout(() => fetch(`/api/modules/${id}/start`, { method: 'POST' }), 1500);
+            await fetch(`/api/modules/${id}/stop`, { method: 'POST', headers: { 'X-NeuroPace-Control': '1' } });
+            setTimeout(() => fetch(`/api/modules/${id}/start`, { method: 'POST', headers: { 'X-NeuroPace-Control': '1' } }), 1500);
         }
         async function startAll() {
-            await fetch('/api/modules/start-all', { method: 'POST' });
+            await fetch('/api/modules/start-all', { method: 'POST', headers: { 'X-NeuroPace-Control': '1' } });
         }
         async function stopAll() {
-            await fetch('/api/modules/stop-all', { method: 'POST' });
+            await fetch('/api/modules/stop-all', { method: 'POST', headers: { 'X-NeuroPace-Control': '1' } });
         }
         function toggleModule(id) {
             if (modules[id]?.status === 'running') stopModule(id);
