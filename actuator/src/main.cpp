@@ -33,8 +33,8 @@ int main() {
     PrintBanner();
     neuropace::SafetyConfig safetyConfig;
     safetyConfig.max_actions_per_second = 10;
-    safetyConfig.max_thread_priority    = 2;   
-    safetyConfig.max_tgp_boost_w        = 50;
+    safetyConfig.max_thread_priority    = 2;
+    safetyConfig.max_power_limit_delta_pct        = 50;
     safetyConfig.min_confidence         = 0.2;
     safetyConfig.rollback_timeout_ms    = 5000;
     safetyConfig.enable_audit_log       = true;
@@ -49,7 +49,7 @@ int main() {
         return 1;
     }
     neuropace::TgpConfig tgpConfig;
-    tgpConfig.max_boost_w        = safetyConfig.max_tgp_boost_w;
+    tgpConfig.max_boost_w        = safetyConfig.max_power_limit_delta_pct;
     tgpConfig.revert_timeout_ms  = safetyConfig.rollback_timeout_ms;
     tgpConfig.default_tgp_w      = 300;
     tgpConfig.absolute_max_tgp_w = 400;
@@ -93,9 +93,9 @@ int main() {
             bool success = false;
             std::string details;
             switch (cmd.action) {
-                case neuropace::ActionType::BOOST_TGP: {
-                    success = tgpActuator.ApplyBoost(cmd.params.tgp_boost_w);
-                    details = std::format("TGP +{}W", cmd.params.tgp_boost_w);
+                case neuropace::ActionType::RAISE_POWER_LIMIT: {
+                    success = tgpActuator.ApplyBoost(cmd.params.power_limit_delta_pct);
+                    details = "GPU power control unavailable";
                     break;
                 }
                 case neuropace::ActionType::REBALANCE_THREADS: {
@@ -110,8 +110,8 @@ int main() {
                     }
                     break;
                 }
-                case neuropace::ActionType::BOOST_AND_REBALANCE: {
-                    bool tgpOk = tgpActuator.ApplyBoost(cmd.params.tgp_boost_w);
+                case neuropace::ActionType::RAISE_POWER_LIMIT_AND_REBALANCE: {
+                    bool tgpOk = tgpActuator.ApplyBoost(cmd.params.power_limit_delta_pct);
                     bool schedOk = false;
                     if (scheduler.IsAttached()) {
                         int priority = neuropace::ThreadPriorityFromString(
@@ -119,9 +119,9 @@ int main() {
                         );
                         schedOk = scheduler.RebalanceThreads(priority);
                     }
-                    success = tgpOk || schedOk;
+                    success = tgpOk && schedOk;
                     details = std::format("TGP +{}W, Priority={}, sched={}",
-                                          cmd.params.tgp_boost_w,
+                                          cmd.params.power_limit_delta_pct,
                                           cmd.params.thread_priority,
                                           schedOk ? "OK" : "SKIP");
                     break;
@@ -151,7 +151,7 @@ int main() {
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
     std::cout << "\n[MAIN] Shutting down...\n";
-    scheduler.Detach();       
+    scheduler.Detach();
     tgpActuator.RevertToDefault();
     subscriber.Stop();
     std::cout << "\n============================================================\n";

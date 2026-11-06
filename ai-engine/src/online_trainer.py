@@ -39,13 +39,14 @@ class OnlineTrainer:
     retrains + exports a new ONNX model which the predictor hot-reloads.
     """
     def __init__(self, config, model_output_path: Path) -> None:
-        self._cfg = config  
+        self._cfg = config
         self._model_path = model_output_path
         self._buffer = SampleBuffer(max_size=config.max_memory_samples)
         self._thread: Optional[threading.Thread] = None
         self._stop = threading.Event()
         self._last_retrain = time.time()
         self._retrain_count = 0
+        self._pending_features: Optional[np.ndarray] = None
     def start(self) -> None:
         if not self._cfg.enabled:
             logger.info("[OnlineTrainer] Disabled by config.")
@@ -62,16 +63,28 @@ class OnlineTrainer:
         self._stop.set()
         if self._thread:
             self._thread.join(timeout=5.0)
-    def observe(self, features: np.ndarray, gpu_tgp_w: float, dpc_latency_us: float) -> None:
+    def observe(
+        self,
+        features: np.ndarray,
+        gpu_tgp_w: float,
+        dpc_latency_us: float,
+        frame_time_ms: float = 0.0,
+    ) -> None:
         """
         Call this after every feature extraction.
         Auto-labels the frame as risky (1) or safe (0).
         """
+        # Label the previous feature vector with the outcome observed now. This
+        # preserves the one-step-ahead prediction target instead of training on
+        # the same frame it is meant to predict.
         label = 1 if (
             gpu_tgp_w > self._cfg.label_high_load_tgp_w or
-            dpc_latency_us > self._cfg.label_spike_dpc_us
+            dpc_latency_us > self._cfg.label_spike_dpc_us or
+            frame_time_ms > self._cfg.label_slow_frame_ms
         ) else 0
-        self._buffer.add(features, label)
+        if self._pending_features is not None:
+            self._buffer.add(self._pending_features, label)
+        self._pending_features = features.copy()
     def _loop(self) -> None:
         """Background retraining loop."""
         while not self._stop.wait(timeout=30.0):
@@ -89,15 +102,16 @@ class OnlineTrainer:
             return
         try:
             from sklearn.ensemble import RandomForestClassifier
-            from sklearn.model_selection import train_test_split
             from skl2onnx import convert_sklearn
             from skl2onnx.common.data_types import FloatTensorType
-            # stratify requires at least 2 samples per class
-            class_counts = np.bincount(y.astype(np.int64))
-            stratify = y if (class_counts.min() >= 2) else None
-            X_train, X_test, y_train, y_test = train_test_split(
-                X, y, test_size=0.2, random_state=42, stratify=stratify
-            )
+            # Preserve chronology; random splitting leaks adjacent session
+            # conditions into both train and test partitions.
+            split = max(1, min(len(X) - 1, int(len(X) * 0.8)))
+            X_train, X_test = X[:split], X[split:]
+            y_train, y_test = y[:split], y[split:]
+            if len(np.unique(y_train)) < 2:
+                logger.warning("[OnlineTrainer] Training window has one class — skipping.")
+                return
             clf = RandomForestClassifier(
                 n_estimators=150,
                 max_depth=10,

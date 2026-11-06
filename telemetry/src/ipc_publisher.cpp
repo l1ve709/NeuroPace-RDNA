@@ -166,7 +166,7 @@ bool IpcPublisher::CreatePipeInstance(PipeClient& client) {
 }
 void IpcPublisher::DisconnectClient(PipeClient& client) {
     if (client.handle != INVALID_HANDLE_VALUE) {
-        ::FlushFileBuffers(client.handle);
+        // A stalled reader must not block shutdown waiting to drain the pipe.
         ::DisconnectNamedPipe(client.handle);
         ::CloseHandle(client.handle);
         client.handle = INVALID_HANDLE_VALUE;
@@ -205,8 +205,7 @@ bool IpcPublisher::WriteToClient(PipeClient& client, const std::string& data) {
         if (err == ERROR_IO_PENDING) {
             DWORD waitResult = ::WaitForSingleObject(client.writeEvent, 50);
             if (waitResult == WAIT_OBJECT_0) {
-                ::GetOverlappedResult(client.handle, &client.overlapped, &bytesWritten, FALSE);
-                success = TRUE;
+                success = ::GetOverlappedResult(client.handle, &client.overlapped, &bytesWritten, FALSE);
             } else if (waitResult == WAIT_TIMEOUT) {
                 ::CancelIo(client.handle);
             }
@@ -222,4 +221,4 @@ void IpcPublisher::SetError(const std::string& msg) {
     m_lastError = msg;
     std::cerr << "[IPC] ERROR: " << msg << "\n";
 }
-} 
+}

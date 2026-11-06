@@ -1,7 +1,7 @@
 import json
 import time
 import logging
-from typing import Generator, Optional
+from typing import Callable, Generator, Optional
 from dataclasses import dataclass
 import win32file
 import win32pipe
@@ -43,7 +43,9 @@ class NdjsonBuffer:
             if not line:
                 continue
             try:
-                messages.append(json.loads(line))
+                message = json.loads(line)
+                if isinstance(message, dict):
+                    messages.append(message)
             except json.JSONDecodeError as e:
                 logger.warning("JSON parse error: %s (line: %.100s...)", e, line)
         if len(self._buffer) > 1_000_000:
@@ -80,11 +82,11 @@ class IpcSubscriber:
             self._handle = win32file.CreateFile(
                 self._config.telemetry_pipe,
                 win32file.GENERIC_READ,
-                0,                          
-                None,                       
-                win32file.OPEN_EXISTING,    
-                0,                          
-                None,                       
+                0,
+                None,
+                win32file.OPEN_EXISTING,
+                0,
+                None,
             )
             self._connected = True
             self._buffer.reset()
@@ -119,7 +121,7 @@ class IpcSubscriber:
         try:
             _, bytes_avail, _ = win32pipe.PeekNamedPipe(self._handle, 0)
             if bytes_avail == 0:
-                time.sleep(0.01) 
+                time.sleep(0.01)
                 return []
             hr, data = win32file.ReadFile(
                 self._handle,
@@ -145,7 +147,10 @@ class IpcSubscriber:
                 logger.error("Pipe read error: [%d] %s", e.winerror, e.strerror)
                 self._handle_disconnect()
             return []
-    def stream(self) -> Generator[dict, None, None]:
+    def stream(
+        self,
+        stop_requested: Optional[Callable[[], bool]] = None,
+    ) -> Generator[dict, None, None]:
         """
         Generator that yields TelemetryFrame dicts indefinitely.
         Automatically reconnects on pipe disconnection.
@@ -153,17 +158,20 @@ class IpcSubscriber:
             dict: Parsed TelemetryFrame JSON object.
         """
         logger.info("Starting telemetry stream (pipe: %s)", self._config.telemetry_pipe)
-        while True:
+        should_stop = stop_requested or (lambda: False)
+        while not should_stop():
             if not self._connected:
                 if not self.connect():
-                    time.sleep(self._config.reconnect_interval_sec)
+                    deadline = time.monotonic() + self._config.reconnect_interval_sec
+                    while not should_stop() and time.monotonic() < deadline:
+                        time.sleep(min(0.05, max(0.0, deadline - time.monotonic())))
                     continue
             frames = self.read_frames()
             if frames:
                 for frame in frames:
                     yield frame
             else:
-                time.sleep(0.001)  
+                time.sleep(0.001)
     def _handle_disconnect(self) -> None:
         """Handle a pipe disconnection event."""
         self.disconnect()

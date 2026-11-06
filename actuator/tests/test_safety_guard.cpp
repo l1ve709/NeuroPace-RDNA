@@ -19,7 +19,7 @@ void test_reject_low_confidence() {
     SafetyGuard guard(config);
     ActionCommand cmd;
     cmd.action = ActionType::REBALANCE_THREADS;
-    cmd.confidence = 0.3;  
+    cmd.confidence = 0.3;
     cmd.params.thread_priority = "NORMAL";
     assert(!guard.ValidateAction(cmd, 1234));
     assert(guard.GetRejectedCount() == 1);
@@ -27,23 +27,23 @@ void test_reject_low_confidence() {
 }
 void test_reject_excessive_tgp() {
     SafetyConfig config;
-    config.max_tgp_boost_w = 30;
+    config.max_power_limit_delta_pct = 30;
     SafetyGuard guard(config);
     ActionCommand cmd;
-    cmd.action = ActionType::BOOST_TGP;
+    cmd.action = ActionType::RAISE_POWER_LIMIT;
     cmd.confidence = 0.8;
-    cmd.params.tgp_boost_w = 50;  
+    cmd.params.power_limit_delta_pct = 50;
     assert(!guard.ValidateAction(cmd, 1234));
     std::cout << "[TEST] test_reject_excessive_tgp PASSED\n";
 }
 void test_reject_excessive_priority() {
     SafetyConfig config;
-    config.max_thread_priority = 1;  
+    config.max_thread_priority = 1;
     SafetyGuard guard(config);
     ActionCommand cmd;
     cmd.action = ActionType::REBALANCE_THREADS;
     cmd.confidence = 0.9;
-    cmd.params.thread_priority = "HIGH";  
+    cmd.params.thread_priority = "HIGH";
     assert(!guard.ValidateAction(cmd, 1234));
     std::cout << "[TEST] test_reject_excessive_priority PASSED\n";
 }
@@ -54,19 +54,19 @@ void test_reject_zero_pid() {
     cmd.action = ActionType::REBALANCE_THREADS;
     cmd.confidence = 0.9;
     cmd.params.thread_priority = "NORMAL";
-    assert(!guard.ValidateAction(cmd, 0));  
+    assert(!guard.ValidateAction(cmd, 0));
     std::cout << "[TEST] test_reject_zero_pid PASSED\n";
 }
 void test_approve_valid_action() {
     SafetyConfig config;
     config.min_confidence = 0.2;
-    config.max_tgp_boost_w = 50;
+    config.max_power_limit_delta_pct = 50;
     config.max_thread_priority = 2;
     SafetyGuard guard(config);
     ActionCommand cmd;
-    cmd.action = ActionType::BOOST_AND_REBALANCE;
+    cmd.action = ActionType::RAISE_POWER_LIMIT_AND_REBALANCE;
     cmd.confidence = 0.85;
-    cmd.params.tgp_boost_w = 20;
+    cmd.params.power_limit_delta_pct = 20;
     cmd.params.thread_priority = "ABOVE_NORMAL";
     assert(guard.ValidateAction(cmd, 4567));
     assert(guard.GetApprovedCount() == 1);
@@ -78,9 +78,9 @@ void test_rate_limiting() {
     config.min_confidence = 0.0;
     SafetyGuard guard(config);
     ActionCommand cmd;
-    cmd.action = ActionType::BOOST_TGP;
+    cmd.action = ActionType::RAISE_POWER_LIMIT;
     cmd.confidence = 0.9;
-    cmd.params.tgp_boost_w = 10;
+    cmd.params.power_limit_delta_pct = 10;
     assert(guard.ValidateAction(cmd, 1234));
     assert(guard.ValidateAction(cmd, 1234));
     assert(guard.ValidateAction(cmd, 1234));
@@ -89,11 +89,11 @@ void test_rate_limiting() {
 }
 void test_action_type_conversion() {
     assert(ActionTypeFromString("NO_ACTION") == ActionType::NO_ACTION);
-    assert(ActionTypeFromString("BOOST_TGP") == ActionType::BOOST_TGP);
+    assert(ActionTypeFromString("RAISE_POWER_LIMIT") == ActionType::RAISE_POWER_LIMIT);
     assert(ActionTypeFromString("REBALANCE_THREADS") == ActionType::REBALANCE_THREADS);
-    assert(ActionTypeFromString("BOOST_AND_REBALANCE") == ActionType::BOOST_AND_REBALANCE);
+    assert(ActionTypeFromString("RAISE_POWER_LIMIT_AND_REBALANCE") == ActionType::RAISE_POWER_LIMIT_AND_REBALANCE);
     assert(ActionTypeFromString("INVALID") == ActionType::NO_ACTION);
-    assert(ActionTypeToString(ActionType::BOOST_TGP) == "BOOST_TGP");
+    assert(ActionTypeToString(ActionType::RAISE_POWER_LIMIT) == "RAISE_POWER_LIMIT");
     assert(ActionTypeToString(ActionType::NO_ACTION) == "NO_ACTION");
     std::cout << "[TEST] test_action_type_conversion PASSED\n";
 }
@@ -115,7 +115,7 @@ void test_json_deserialization() {
             {"contributing_factors", {"dpc_spike", "thermal_throttle"}}
         }},
         {"params", {
-            {"tgp_boost_w", 15},
+            {"power_limit_delta_pct", 15},
             {"thread_priority", "ABOVE_NORMAL"}
         }}
     };
@@ -125,7 +125,7 @@ void test_json_deserialization() {
     assert(cmd.confidence == 0.85);
     assert(cmd.prediction.frame_drop_probability == 0.75);
     assert(cmd.prediction.contributing_factors.size() == 2);
-    assert(cmd.params.tgp_boost_w == 15);
+    assert(cmd.params.power_limit_delta_pct == 15);
     assert(cmd.params.thread_priority == "ABOVE_NORMAL");
     std::cout << "[TEST] test_json_deserialization PASSED\n";
 }
@@ -134,12 +134,12 @@ void test_invalid_numeric_values() {
     config.enable_audit_log = false;
     SafetyGuard guard(config);
     ActionCommand cmd;
-    cmd.action = ActionType::BOOST_TGP;
+    cmd.action = ActionType::RAISE_POWER_LIMIT;
     cmd.params.thread_priority = "NORMAL";
     cmd.confidence = 0.9;
-    cmd.params.tgp_boost_w = -1;
+    cmd.params.power_limit_delta_pct = -1;
     assert(!guard.ValidateAction(cmd, 1234));
-    cmd.params.tgp_boost_w = 10;
+    cmd.params.power_limit_delta_pct = 10;
     cmd.confidence = std::numeric_limits<double>::quiet_NaN();
     assert(!guard.ValidateAction(cmd, 1234));
     cmd.confidence = 1.1;

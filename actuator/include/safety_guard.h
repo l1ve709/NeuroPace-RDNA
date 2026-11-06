@@ -13,15 +13,15 @@ struct AuditEntry {
     std::string action_type;
     DWORD       target_pid;
     bool        approved;
-    std::string reason;      
+    std::string reason;
     double      confidence;
 };
 struct SafetyConfig {
-    uint32_t max_actions_per_second  = 10;     
-    uint32_t max_thread_priority     = 2;      
-    uint32_t max_tgp_boost_w         = 50;     
-    double   min_confidence          = 0.2;    
-    uint32_t rollback_timeout_ms     = 5000;   
+    uint32_t max_actions_per_second  = 10;
+    uint32_t max_thread_priority     = 2;
+    uint32_t max_power_limit_delta_pct         = 50;
+    double   min_confidence          = 0.2;
+    uint32_t rollback_timeout_ms     = 5000;
     bool     enable_audit_log        = true;
     std::string audit_log_path       = "neuropace_audit.log";
 };
@@ -67,4 +67,4 @@ private:
     std::vector<std::chrono::steady_clock::time_point> m_actionTimestamps;
     std::ofstream m_auditFile;
 };
-} 
+}

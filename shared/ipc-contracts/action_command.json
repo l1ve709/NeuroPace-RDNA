@@ -12,7 +12,7 @@
     },
     "action": {
       "type": "string",
-      "enum": ["NO_ACTION", "BOOST_TGP", "REBALANCE_THREADS", "BOOST_AND_REBALANCE"],
+      "enum": ["NO_ACTION", "RAISE_POWER_LIMIT", "REBALANCE_THREADS", "RAISE_POWER_LIMIT_AND_REBALANCE"],
       "description": "Recommended action type based on frame drop probability"
     },
     "confidence": {
@@ -46,9 +46,11 @@
       "type": "object",
       "description": "Optional action-specific parameters",
       "properties": {
-        "tgp_boost_w": {
+        "power_limit_delta_pct": {
           "type": "integer",
-          "description": "Suggested TGP increase in watts"
+          "minimum": 0,
+          "maximum": 5,
+          "description": "Suggested power limit increase in percentage points; hardware backend currently unavailable"
         },
         "thread_priority": {
           "type": "string",

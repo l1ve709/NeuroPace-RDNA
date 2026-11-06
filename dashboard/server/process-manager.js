@@ -1,4 +1,4 @@
-const { spawn, execSync } = require('child_process');
+const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 const { EventEmitter } = require('events');
@@ -6,7 +6,11 @@ const PROJECT_ROOT = path.resolve(__dirname, '..', '..');
 function resolveCommand(primary, fallback) {
     if (fs.existsSync(primary)) return primary;
     if (fallback && fs.existsSync(fallback)) return fallback;
-    return primary; 
+    return primary;
+}
+
+function resolvePythonCommand() {
+    return process.env.NEUROPACE_PYTHON || (process.platform === 'win32' ? 'py' : 'python3');
 }
 const TELEMETRY_EXE = resolveCommand(
     path.join(PROJECT_ROOT, 'bin', 'neuropace-telemetry.exe'),
@@ -40,8 +44,10 @@ const MODULE_DEFINITIONS = {
     ai_engine: {
         label: 'AI Engine',
         description: 'ONNX Prediction Engine',
-        command: 'python',
-        args: [AI_ENGINE_SCRIPT],
+        command: resolvePythonCommand(),
+        args: process.platform === 'win32' && !process.env.NEUROPACE_PYTHON
+            ? ['-3', AI_ENGINE_SCRIPT]
+            : [AI_ENGINE_SCRIPT],
         cwd: path.dirname(AI_ENGINE_SCRIPT),
         icon: 'brain',
     },
@@ -63,13 +69,13 @@ class ProcessManager extends EventEmitter {
             this.modules[id] = {
                 id,
                 ...def,
-                status: 'stopped',   
+                status: 'stopped',
                 pid: null,
                 proc: null,
                 uptime: null,
                 startedAt: null,
                 exitCode: null,
-                logs: [],            
+                logs: [],
                 maxLogs: 500,
             };
         }
@@ -77,7 +83,16 @@ class ProcessManager extends EventEmitter {
     start(moduleId) {
         const mod = this.modules[moduleId];
         if (!mod) return { ok: false, error: `Unknown module: ${moduleId}` };
-        if (mod.status === 'running') return { ok: false, error: `${mod.label} already running` };
+        if (mod.status === 'running' || mod.status === 'starting' || mod.status === 'stopping') {
+            return { ok: false, error: `${mod.label} is ${mod.status}` };
+        }
+        if (path.isAbsolute(mod.command) && !fs.existsSync(mod.command)) {
+            mod.status = 'error';
+            mod.exitCode = null;
+            this._addLog(moduleId, 'error', `Executable not found: ${mod.command}`);
+            this._emit('status', moduleId);
+            return { ok: false, error: `Executable not found: ${mod.command}` };
+        }
         mod.status = 'starting';
         mod.exitCode = null;
         mod.logs = [];
@@ -89,11 +104,13 @@ class ProcessManager extends EventEmitter {
                 windowsHide: true,
             });
             mod.proc = proc;
-            mod.pid = proc.pid;
+            mod.pid = proc.pid || null;
             mod.startedAt = Date.now();
-            mod.status = 'running';
-            this._emit('status', moduleId);
-            this._addLog(moduleId, 'info', `Process started (PID: ${proc.pid})`);
+            if (proc.pid) {
+                mod.status = 'running';
+                this._emit('status', moduleId);
+                this._addLog(moduleId, 'info', `Process started (PID: ${proc.pid})`);
+            }
             proc.stdout.on('data', (data) => {
                 const lines = data.toString().split('\n').filter(l => l.trim());
                 for (const line of lines) {
@@ -109,22 +126,29 @@ class ProcessManager extends EventEmitter {
                     this._addLog(moduleId, level, line.trim());
                 }
             });
-            proc.on('close', (code) => {
+            proc.once('close', (code, signal) => {
+                if (mod.proc !== proc) return;
                 mod.exitCode = code;
-                mod.status = code === 0 ? 'stopped' : 'error';
+                mod.status = code === 0 || mod.status === 'stopping' ? 'stopped' : 'error';
                 mod.pid = null;
                 mod.proc = null;
-                this._addLog(moduleId, code === 0 ? 'info' : 'error', `Process exited (code: ${code})`);
+                mod.startedAt = null;
+                const detail = signal ? `signal: ${signal}` : `code: ${code}`;
+                this._addLog(moduleId, mod.status === 'stopped' ? 'info' : 'error', `Process exited (${detail})`);
                 this._emit('status', moduleId);
             });
-            proc.on('error', (err) => {
+            proc.once('error', (err) => {
+                if (mod.proc !== proc) return;
                 mod.status = 'error';
                 mod.pid = null;
                 mod.proc = null;
+                mod.startedAt = null;
                 this._addLog(moduleId, 'error', `Spawn error: ${err.message}`);
                 this._emit('status', moduleId);
             });
-            return { ok: true, pid: proc.pid };
+            return proc.pid
+                ? { ok: true, pid: proc.pid }
+                : { ok: false, error: `Failed to start ${mod.label}` };
         } catch (err) {
             mod.status = 'error';
             this._addLog(moduleId, 'error', `Failed to start: ${err.message}`);
@@ -135,21 +159,29 @@ class ProcessManager extends EventEmitter {
     stop(moduleId) {
         const mod = this.modules[moduleId];
         if (!mod) return { ok: false, error: `Unknown module: ${moduleId}` };
-        if (mod.status !== 'running') return { ok: false, error: `${mod.label} not running` };
+        if (mod.status !== 'running' || !mod.proc) return { ok: false, error: `${mod.label} not running` };
         try {
-            if (mod.proc) {
-                const pid = mod.proc.pid;
-                mod.proc.kill(); 
-                setTimeout(() => {
-                    if (mod.proc && !mod.proc.killed && pid) {
-                        try {
-                            execSync(`taskkill /PID ${pid} /F /T`, { stdio: 'ignore' });
-                            this._addLog(moduleId, 'warn', 'Process forcefully terminated');
-                        } catch (e) {
-                        }
+            const proc = mod.proc;
+            const pid = proc.pid;
+            mod.status = 'stopping';
+            this._emit('status', moduleId);
+            proc.kill();
+            const forceTimer = setTimeout(() => {
+                if (mod.proc !== proc || proc.exitCode !== null || !pid) return;
+                try {
+                    if (process.platform === 'win32') {
+                        spawn('taskkill', ['/PID', String(pid), '/F', '/T'], {
+                            stdio: 'ignore', windowsHide: true,
+                        }).unref();
+                    } else {
+                        proc.kill('SIGKILL');
                     }
-                }, 2000);
-            }
+                    this._addLog(moduleId, 'warn', 'Process did not exit in time; force termination requested');
+                } catch (error) {
+                    this._addLog(moduleId, 'error', `Force termination failed: ${error.message}`);
+                }
+            }, 2000);
+            forceTimer.unref();
             this._addLog(moduleId, 'info', 'Stop command sent');
             return { ok: true };
         } catch (err) {
@@ -161,7 +193,7 @@ class ProcessManager extends EventEmitter {
         for (const id of Object.keys(this.modules)) {
             if (this.modules[id].optional) continue;
             results[id] = this.start(id);
-            await new Promise(r => setTimeout(r, 1500)); 
+            await new Promise(r => setTimeout(r, 1500));
         }
         return results;
     }
@@ -184,7 +216,9 @@ class ProcessManager extends EventEmitter {
                 icon: mod.icon,
                 status: mod.status,
                 pid: mod.pid,
-                uptime: mod.startedAt ? Date.now() - mod.startedAt : null,
+                uptime: mod.startedAt && ['running', 'stopping'].includes(mod.status)
+                    ? Date.now() - mod.startedAt
+                    : null,
                 exitCode: mod.exitCode,
                 optional: !!mod.optional,
             };
@@ -194,7 +228,10 @@ class ProcessManager extends EventEmitter {
     getLogs(moduleId, limit = 100) {
         const mod = this.modules[moduleId];
         if (!mod) return [];
-        return mod.logs.slice(-limit);
+        const safeLimit = Number.isFinite(Number(limit))
+            ? Math.min(500, Math.max(1, Math.trunc(Number(limit))))
+            : 100;
+        return mod.logs.slice(-safeLimit);
     }
     _addLog(moduleId, level, message) {
         const mod = this.modules[moduleId];
@@ -215,10 +252,12 @@ class ProcessManager extends EventEmitter {
     }
     shutdown() {
         for (const [id, mod] of Object.entries(this.modules)) {
-            if (mod.proc && !mod.proc.killed) {
-                try { mod.proc.kill('SIGKILL'); } catch {}
+            if (mod.proc && mod.proc.exitCode === null) {
+                try { mod.proc.kill(); } catch (error) {
+                    this._addLog(id, 'error', `Shutdown failed: ${error.message}`);
+                }
             }
         }
     }
 }
-module.exports = { ProcessManager };
+module.exports = { ProcessManager, resolveCommand, resolvePythonCommand };

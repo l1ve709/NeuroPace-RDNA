@@ -5,11 +5,14 @@
   "private": true,
   "scripts": {
     "start": "node server/index.js",
-    "dev": "node server/index.js"
+    "dev": "node server/index.js",
+    "check": "node --check server/index.js && node --check server/process-manager.js && node --check server/pipe-bridge.js && node --check public/js/app.js && node --check public/js/chart-engine.js"
   },
   "dependencies": {
-    "discord-rpc": "^4.0.1",
-    "express": "^4.21.0",
-    "ws": "^8.16.0"
+    "express": "^5.1.0",
+    "ws": "^8.21.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
   }
 }

@@ -2,6 +2,7 @@ from __future__ import annotations
 import logging
 import math
 import time
+import threading
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
@@ -11,9 +12,9 @@ from feature_engineer import FEATURE_NAMES, NUM_FEATURES
 logger = logging.getLogger("neuropace.ai.predictor")
 class ActionType:
     NO_ACTION = "NO_ACTION"
-    BOOST_TGP = "BOOST_TGP"
+    RAISE_POWER_LIMIT = "RAISE_POWER_LIMIT"
     REBALANCE_THREADS = "REBALANCE_THREADS"
-    BOOST_AND_REBALANCE = "BOOST_AND_REBALANCE"
+    RAISE_POWER_LIMIT_AND_REBALANCE = "RAISE_POWER_LIMIT_AND_REBALANCE"
 @dataclass
 class PredictionResult:
     """Output of a single prediction cycle."""
@@ -23,7 +24,7 @@ class PredictionResult:
     timestamp_us: int = 0
     predicted_latency_spike_us: float = 0.0
     contributing_factors: list[str] = field(default_factory=list)
-    tgp_boost_w: int = 0
+    power_limit_delta_pct: int = 0
     thread_priority: str = "NORMAL"
     inference_time_ms: float = 0.0
     def to_dict(self) -> dict:
@@ -38,7 +39,7 @@ class PredictionResult:
                 "contributing_factors": self.contributing_factors,
             },
             "params": {
-                "tgp_boost_w": self.tgp_boost_w,
+                "power_limit_delta_pct": self.power_limit_delta_pct,
                 "thread_priority": self.thread_priority,
             },
             "inference_time_ms": round(self.inference_time_ms, 3),
@@ -70,9 +71,10 @@ class Predictor:
     """
     def __init__(self, config: PredictorConfig = PredictorConfig()) -> None:
         self._config = config
-        self._session = None  
+        self._session = None
         self._input_name: str = ""
         self._model_loaded: bool = False
+        self._session_lock = threading.RLock()
         self.stats = PredictorStats()
     @property
     def is_loaded(self) -> bool:
@@ -97,26 +99,29 @@ class Predictor:
             sess_options.graph_optimization_level = (
                 ort.GraphOptimizationLevel.ORT_ENABLE_ALL
             )
-            self._session = ort.InferenceSession(
+            session = ort.InferenceSession(
                 str(model_path),
                 sess_options=sess_options,
                 providers=["CPUExecutionProvider"],
             )
-            inputs = self._session.get_inputs()
-            outputs = self._session.get_outputs()
+            inputs = session.get_inputs()
+            outputs = session.get_outputs()
             if len(inputs) != 1:
                 logger.error("Model must have exactly 1 input, got %d", len(inputs))
                 return False
-            self._input_name = inputs[0].name
             expected_shape = inputs[0].shape
-            if len(expected_shape) == 2 and expected_shape[-1] != NUM_FEATURES:
+            if (len(expected_shape) == 2 and isinstance(expected_shape[-1], int)
+                    and expected_shape[-1] != NUM_FEATURES):
                 logger.error(
                     "Model expects %d features, but FeatureEngineer produces %d",
                     expected_shape[-1],
                     NUM_FEATURES,
                 )
                 return False
-            self._model_loaded = True
+            with self._session_lock:
+                self._session = session
+                self._input_name = inputs[0].name
+                self._model_loaded = True
             logger.info(
                 "Model loaded: %s (input: %s %s, outputs: %d)",
                 model_path.name,
@@ -127,7 +132,6 @@ class Predictor:
             return True
         except Exception as e:
             logger.error("Failed to load ONNX model: %s", e)
-            self._model_loaded = False
             return False
     def predict(self, features: np.ndarray) -> PredictionResult:
         """
@@ -139,7 +143,11 @@ class Predictor:
         """
         result = PredictionResult()
         result.timestamp_us = int(time.time() * 1_000_000)
-        if not self._model_loaded or self._session is None:
+        with self._session_lock:
+            session = self._session
+            input_name = self._input_name
+            model_loaded = self._model_loaded
+        if not model_loaded or session is None:
             return result
         if features.size != NUM_FEATURES or not np.all(np.isfinite(features)):
             logger.warning("Rejecting malformed telemetry")
@@ -149,7 +157,7 @@ class Predictor:
             return result
         t_start = time.perf_counter()
         try:
-            outputs = self._session.run(None, {self._input_name: input_array})
+            outputs = session.run(None, {input_name: input_array})
         except Exception as e:
             logger.error("ONNX inference failed: %s", e)
             return result
@@ -174,33 +182,33 @@ class Predictor:
                 flat = np.asarray(proba, dtype=np.float64).reshape(-1)
                 val = float(flat[-1]) if flat.size > 1 else float(flat[0])
                 if val < 0.0 or val > 1.0:
-                    val = 1.0 / (1.0 + math.exp(-val))  # logit -> probability
+                    val = (1.0 / (1.0 + math.exp(-val))) if val >= 0 else (math.exp(val) / (1.0 + math.exp(val)))
                 result.frame_drop_probability = float(np.clip(val, 0.0, 1.0))
         if not math.isfinite(result.frame_drop_probability):
             logger.warning("Rejecting non-finite model output")
             return PredictionResult(timestamp_us=result.timestamp_us)
         result.frame_drop_probability = float(np.clip(result.frame_drop_probability, 0.0, 1.0))
         prob = result.frame_drop_probability
-        result.confidence = abs(prob - 0.5) * 2.0  
+        result.confidence = abs(prob - 0.5) * 2.0
         if prob >= self._config.threshold_combined:
-            result.action = ActionType.BOOST_AND_REBALANCE
-            result.tgp_boost_w = self._config.tgp_boost_high_w
+            result.action = ActionType.RAISE_POWER_LIMIT_AND_REBALANCE
+            result.power_limit_delta_pct = self._config.power_limit_high_pct
             result.thread_priority = "HIGH"
         elif prob >= self._config.threshold_rebalance:
             result.action = ActionType.REBALANCE_THREADS
-            result.tgp_boost_w = self._config.tgp_boost_mid_w
+            result.power_limit_delta_pct = 0
             result.thread_priority = "ABOVE_NORMAL"
-        elif prob >= self._config.threshold_boost_tgp:
-            result.action = ActionType.BOOST_TGP
-            result.tgp_boost_w = self._config.tgp_boost_low_w
+        elif prob >= self._config.threshold_raise_power:
+            result.action = ActionType.RAISE_POWER_LIMIT
+            result.power_limit_delta_pct = self._config.power_limit_low_pct
             result.thread_priority = "NORMAL"
         else:
             result.action = ActionType.NO_ACTION
-            result.tgp_boost_w = 0
+            result.power_limit_delta_pct = 0
             result.thread_priority = "NORMAL"
         result.contributing_factors = self._analyze_factors(features)
-        current_dpc = features[0]  
-        dpc_delta = features[17]   
+        current_dpc = features[0]
+        dpc_delta = features[17]
         if dpc_delta > 0:
             result.predicted_latency_spike_us = current_dpc + dpc_delta * 5.0
         else:
@@ -216,16 +224,16 @@ class Predictor:
         Uses simple threshold-based heuristics on individual features.
         """
         factors: list[str] = []
-        if features[16] > 2.0:  
+        if features[16] > 2.0:
             factors.append("dpc_spike")
-        if features[14] < 5.0:  
+        if features[14] < 5.0:
             factors.append("thermal_throttle")
-        if features[13] > 0.90:  
+        if features[13] > 0.90:
             factors.append("vram_pressure")
-        if features[15] > 0.95:  
+        if features[15] > 0.95:
             factors.append("tgp_saturation")
-        if features[18] < -50:  
+        if features[18] < -50:
             factors.append("clock_instability")
-        if features[23] > 3.0:  
+        if features[23] > 3.0:
             factors.append("frame_time_jitter")
         return factors

@@ -1,5 +1,6 @@
 from __future__ import annotations
 import logging
+import math
 from collections import deque
 from typing import Optional
 import numpy as np
@@ -19,28 +20,59 @@ FEATURE_NAMES: list[str] = [
     "gpu_utilization_pct",
     "vram_used_mb",
     "fan_speed_rpm",
-    "vram_pressure",            
-    "thermal_headroom",         
-    "tgp_ratio",                
-    "dpc_spike_ratio",          
-    "dpc_latency_delta",        
-    "gpu_clock_delta",          
-    "gpu_temp_delta",           
-    "frame_time_delta",         
-    "gpu_utilization_delta",    
-    "dpc_std_window",           
-    "frame_time_std_window",    
-    "dpc_spike_count_window",   
-    "gpu_clock_min_window",     
-    "frame_time_p95_window",    
-    "frame_time_p99_window",    
+    "vram_pressure",
+    "thermal_headroom",
+    "tgp_ratio",
+    "dpc_spike_ratio",
+    "dpc_latency_delta",
+    "gpu_clock_delta",
+    "gpu_temp_delta",
+    "frame_time_delta",
+    "gpu_utilization_delta",
+    "dpc_std_window",
+    "frame_time_std_window",
+    "dpc_spike_count_window",
+    "gpu_clock_min_window",
+    "frame_time_p95_window",
+    "frame_time_p99_window",
 ]
-NUM_FEATURES: int = len(FEATURE_NAMES)  
+NUM_FEATURES: int = len(FEATURE_NAMES)
 def _safe_div(numerator: float, denominator: float, default: float = 0.0) -> float:
     """Division with zero-denominator protection."""
     if denominator == 0.0:
         return default
     return numerator / denominator
+
+def _finite_number(value: object, default: float = 0.0) -> float:
+    """Return a finite JSON number, rejecting booleans and malformed values."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return default
+    number = float(value)
+    return number if math.isfinite(number) else default
+
+def normalize_frame(frame: object) -> Optional[dict]:
+    """Normalize the untrusted IPC payload into the numeric fields we consume."""
+    if not isinstance(frame, dict):
+        return None
+    raw_dpc = frame.get("dpc_isr", {})
+    raw_gpu = frame.get("gpu", {})
+    if not isinstance(raw_dpc, dict) or not isinstance(raw_gpu, dict):
+        return None
+    dpc_fields = (
+        "dpc_latency_us", "dpc_avg_us", "dpc_max_us",
+        "isr_latency_us", "isr_avg_us", "isr_max_us",
+    )
+    gpu_fields = (
+        "gpu_clock_mhz", "gpu_temp_c", "hotspot_temp_c", "gpu_tgp_w",
+        "gpu_utilization_pct", "vram_used_mb", "vram_total_mb", "fan_speed_rpm",
+    )
+    return {
+        "timestamp_us": max(0.0, _finite_number(frame.get("timestamp_us"))),
+        "sequence_id": max(0.0, _finite_number(frame.get("sequence_id"))),
+        "frame_time_ms": max(0.0, _finite_number(frame.get("frame_time_ms"))),
+        "dpc_isr": {name: max(0.0, _finite_number(raw_dpc.get(name))) for name in dpc_fields},
+        "gpu": {name: max(0.0, _finite_number(raw_gpu.get(name))) for name in gpu_fields},
+    }
 class FeatureEngineer:
     """
     Stateful feature extractor that maintains a sliding window of recent
@@ -84,11 +116,15 @@ class FeatureEngineer:
             numpy array of shape (NUM_FEATURES,) with float64 values,
             or None if the window is not yet full enough.
         """
-        self._window.append(frame)
+        normalized = normalize_frame(frame)
+        if normalized is None:
+            logger.warning("Ignoring malformed telemetry frame")
+            return None
+        self._window.append(normalized)
         self._frame_count += 1
         if not self.is_ready:
             return None
-        return self._extract_features(frame)
+        return self._extract_features(normalized)
     def _extract_features(self, current: dict) -> np.ndarray:
         """Build the full feature vector from current frame + window history."""
         features = np.zeros(NUM_FEATURES, dtype=np.float64)
@@ -139,7 +175,7 @@ class FeatureEngineer:
                 gpu.get("gpu_utilization_pct", 0.0)
                 - prev_gpu.get("gpu_utilization_pct", 0.0)
             )
-        window_list = list(self._window)  
+        window_list = list(self._window)
         dpc_values = np.array(
             [f.get("dpc_isr", {}).get("dpc_latency_us", 0.0) for f in window_list],
             dtype=np.float64,

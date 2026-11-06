@@ -12,7 +12,7 @@ namespace neuropace {
 struct EtwConfig {
     bool        capture_dpc    = true;
     bool        capture_isr    = true;
-    uint32_t    flush_timer_ms = 1;  
+    uint32_t    flush_timer_ms = 1;
 };
 class EtwCollector {
 public:
@@ -48,6 +48,6 @@ private:
     mutable std::shared_mutex m_errorMutex;
     std::string               m_lastError;
     std::vector<BYTE> m_propertiesBuffer;
-    static constexpr wchar_t kSessionName[] = KERNEL_LOGGER_NAMEW;
+    static constexpr wchar_t kSessionName[] = L"NeuroPace-KernelTelemetry";
 };
-} 
+}

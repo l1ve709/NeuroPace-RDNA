@@ -58,7 +58,7 @@ def analyze(frames: Iterable[Frame], threshold_ms: float = 33.3) -> dict:
     for frame in frames:
         if (not math.isfinite(frame.timestamp_ms) or
                 not math.isfinite(frame.frame_time_ms) or
-                frame.timestamp_ms <= last or frame.frame_time_ms <= 0):
+                frame.timestamp_ms < 0 or frame.timestamp_ms <= last or frame.frame_time_ms <= 0):
             raise ValueError("Invalid or unordered frames")
         last = frame.timestamp_ms
     durations = [f.frame_time_ms for f in frames]

@@ -67,7 +67,7 @@ bool SafetyGuard::ValidateAction(const ActionCommand& cmd, DWORD targetPid) {
         });
         return false;
     }
-    if (cmd.params.tgp_boost_w < 0 || cmd.params.tgp_boost_w > static_cast<int>(m_config.max_tgp_boost_w)) {
+    if (cmd.params.power_limit_delta_pct < 0 || cmd.params.power_limit_delta_pct > static_cast<int>(m_config.max_power_limit_delta_pct)) {
         ++m_rejectedCount;
         WriteAuditEntry({
             cmd.timestamp_us,
@@ -75,7 +75,7 @@ bool SafetyGuard::ValidateAction(const ActionCommand& cmd, DWORD targetPid) {
             targetPid,
             false,
             std::format("TGP boost {}W exceeds cap {}W",
-                        cmd.params.tgp_boost_w, m_config.max_tgp_boost_w),
+                        cmd.params.power_limit_delta_pct, m_config.max_power_limit_delta_pct),
             cmd.confidence,
         });
         return false;
@@ -152,4 +152,4 @@ void SafetyGuard::WriteAuditEntry(const AuditEntry& entry) {
     );
     m_auditFile.flush();
 }
-} 
+}

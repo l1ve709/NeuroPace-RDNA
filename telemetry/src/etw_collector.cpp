@@ -14,13 +14,13 @@ static constexpr UCHAR kOpcodeDpcTimer    = 68;
 static constexpr UCHAR kOpcodeIsrChained  = 69;
 #pragma pack(push, 1)
 struct DpcEventData {
-    ULONG64   InitialTime;     
-    ULONG_PTR Routine;         
+    ULONG64   InitialTime;
+    ULONG_PTR Routine;
 };
 struct IsrEventData {
-    ULONG64   InitialTime;     
-    ULONG_PTR Routine;         
-    UCHAR     ReturnValue;     
+    ULONG64   InitialTime;
+    ULONG_PTR Routine;
+    UCHAR     ReturnValue;
 };
 #pragma pack(pop)
 static thread_local EtwCollector* g_activeCollector = nullptr;
@@ -41,14 +41,6 @@ bool EtwCollector::Start() {
     if (m_running.load()) {
         SetError("ETW session already running");
         return false;
-    }
-    {
-        const ULONG propSize = sizeof(EVENT_TRACE_PROPERTIES) + sizeof(kSessionName) + 64;
-        std::vector<BYTE> buf(propSize, 0);
-        auto* props = reinterpret_cast<EVENT_TRACE_PROPERTIES*>(buf.data());
-        props->Wnode.BufferSize = propSize;
-        props->LoggerNameOffset = sizeof(EVENT_TRACE_PROPERTIES);
-        ::ControlTraceW(0, kSessionName, props, EVENT_TRACE_CONTROL_STOP);
     }
     if (!StartTraceSession()) {
         return false;
@@ -123,12 +115,12 @@ bool EtwCollector::StartTraceSession() {
     auto* props = reinterpret_cast<EVENT_TRACE_PROPERTIES*>(m_propertiesBuffer.data());
     props->Wnode.BufferSize    = propSize;
     props->Wnode.Flags         = WNODE_FLAG_TRACED_GUID;
-    props->Wnode.ClientContext = 1;   
+    props->Wnode.ClientContext = 1;
     props->Wnode.Guid          = SystemTraceControlGuid;
     props->LogFileMode         = EVENT_TRACE_REAL_TIME_MODE | EVENT_TRACE_SYSTEM_LOGGER_MODE;
     props->LoggerNameOffset    = sizeof(EVENT_TRACE_PROPERTIES);
     props->FlushTimer          = m_config.flush_timer_ms;
-    props->BufferSize          = 64;    
+    props->BufferSize          = 64;
     props->MinimumBuffers      = 4;
     props->MaximumBuffers      = 16;
     ULONG enableFlags = 0;
@@ -140,22 +132,6 @@ bool EtwCollector::StartTraceSession() {
         kSessionName,
         props
     );
-    if (status == ERROR_ALREADY_EXISTS) {
-        ::ControlTraceW(0, kSessionName, props, EVENT_TRACE_CONTROL_STOP);
-        std::memset(m_propertiesBuffer.data(), 0, propSize);
-        props->Wnode.BufferSize    = propSize;
-        props->Wnode.Flags         = WNODE_FLAG_TRACED_GUID;
-        props->Wnode.ClientContext = 1;
-        props->Wnode.Guid          = SystemTraceControlGuid;
-        props->LogFileMode         = EVENT_TRACE_REAL_TIME_MODE | EVENT_TRACE_SYSTEM_LOGGER_MODE;
-        props->LoggerNameOffset    = sizeof(EVENT_TRACE_PROPERTIES);
-        props->FlushTimer          = m_config.flush_timer_ms;
-        props->BufferSize          = 64;
-        props->MinimumBuffers      = 4;
-        props->MaximumBuffers      = 16;
-        props->EnableFlags         = enableFlags;
-        status = ::StartTraceW(&m_sessionHandle, kSessionName, props);
-    }
     if (status != ERROR_SUCCESS) {
         SetError(std::format("StartTraceW failed: error {} — run as Administrator", status));
         return false;
@@ -166,7 +142,7 @@ bool EtwCollector::OpenTraceConsumer() {
     EVENT_TRACE_LOGFILEW logFile = {};
     logFile.LoggerName           = const_cast<LPWSTR>(kSessionName);
     logFile.ProcessTraceMode     = PROCESS_TRACE_MODE_REAL_TIME
-                                 | PROCESS_TRACE_MODE_EVENT_RECORD;
+                                 | PROCESS_TRACE_MODE_EVENT_RECORD | PROCESS_TRACE_MODE_RAW_TIMESTAMP;
     logFile.EventRecordCallback  = &EtwCollector::EventRecordCallback;
     logFile.BufferCallback       = &EtwCollector::BufferCallback;
     m_traceHandle = ::OpenTraceW(&logFile);
@@ -244,4 +220,4 @@ void EtwCollector::SetError(const std::string& msg) {
     m_lastError = msg;
     std::cerr << "[ETW] ERROR: " << msg << "\n";
 }
-} 
+}

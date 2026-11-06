@@ -6,15 +6,8 @@ const { PipeBridge } = require('./pipe-bridge');
 const { ProcessManager } = require('./process-manager');
 const config = require('./config');
 
-// Discord Rich Presence (optional - fails gracefully when Discord is absent)
-try {
-    const { initRPC } = require('./rpc');
-    initRPC();
-} catch (err) {
-    console.log('[RPC] Discord Rich Presence disabled:', err.message);
-}
-
 const app = express();
+app.disable('x-powered-by');
 app.use(express.json({ limit: '16kb' }));
 // Local-only management API: block common cross-site browser requests and DNS rebinding.
 app.use('/api', (req, res, next) => {
@@ -52,7 +45,9 @@ app.use(express.static(publicPath));
 // Client-side logging endpoint
 app.post('/api/debug-log', (req, res) => {
     const { level, message, details } = req.body;
-    console.log(`[CLIENT-${level ? level.toUpperCase() : 'INFO'}] ${message}`, details || '');
+    const safeLevel = typeof level === 'string' ? level.slice(0, 16).toUpperCase() : 'INFO';
+    const safeMessage = typeof message === 'string' ? message.slice(0, 2000) : '(no message)';
+    console.log(`[CLIENT-${safeLevel}] ${safeMessage}`, details || '');
     res.sendStatus(200);
 });
 
@@ -84,17 +79,37 @@ app.post('/api/modules/stop-all', (req, res) => {
 });
 
 app.get('/api/modules/:id/logs', (req, res) => {
-    const limit = parseInt(req.query.limit) || 200;
+    const requested = Number.parseInt(req.query.limit, 10);
+    const limit = Number.isFinite(requested) ? Math.min(500, Math.max(1, requested)) : 200;
     res.json(pm.getLogs(req.params.id, limit));
 });
 
-const wss = new WebSocketServer({ server, maxPayload: 1024 * 64 });
+function isAllowedBrowserRequest(headers) {
+    const host = headers.host || '';
+    if (!/^(localhost|127\.0\.0\.1)(:\d+)?$/i.test(host)) return false;
+    if (!headers.origin) return true;
+    try {
+        const origin = new URL(headers.origin);
+        return origin.protocol === 'http:' &&
+            ['localhost', '127.0.0.1'].includes(origin.hostname) &&
+            Number(origin.port || 80) === Number(config.port || 3200);
+    } catch {
+        return false;
+    }
+}
+
+const wss = new WebSocketServer({
+    server,
+    maxPayload: 1024 * 64,
+    perMessageDeflate: false,
+    verifyClient: ({ req }, done) => done(isAllowedBrowserRequest(req.headers), 403, 'Forbidden'),
+});
 let wsClientCount = 0;
 
 wss.on('connection', (ws) => {
     wsClientCount++;
     console.log(`[WS] Client connected (total: ${wsClientCount})`);
-    
+
     ws.send(JSON.stringify({
         type: 'init',
         data: {
@@ -113,7 +128,10 @@ function broadcast(type, data) {
     const payload = JSON.stringify({ type, data });
     for (const client of wss.clients) {
         if (client.readyState === 1) { // OPEN
-            try { client.send(payload); } catch (e) {}
+            try { client.send(payload); } catch (error) {
+                console.warn(`[WS] Send failed: ${error.message}`);
+                client.terminate();
+            }
         }
     }
 }
@@ -154,9 +172,10 @@ function getStatus() {
     };
 }
 
-setInterval(() => {
+const statusTimer = setInterval(() => {
     broadcast('status', getStatus());
 }, config.ws.statusIntervalMs || 5000);
+statusTimer.unref();
 
 console.log('');
 console.log('+----------------------------------------------------------+');
@@ -186,8 +205,12 @@ server.listen(config.port || 3200, config.host || '127.0.0.1', () => {
     }
 });
 
-process.on('SIGINT', () => {
+let shuttingDown = false;
+function shutdown() {
+    if (shuttingDown) return;
+    shuttingDown = true;
     console.log('\n[MAIN] Shutting down...');
+    clearInterval(statusTimer);
     pm.shutdown();
     telemetryBridge.stop();
     predictionBridge.stop();
@@ -196,7 +219,11 @@ process.on('SIGINT', () => {
         console.log('[MAIN] Control center stopped');
         process.exit(0);
     });
-});
+    setTimeout(() => process.exit(1), 5000).unref();
+}
+
+process.on('SIGINT', shutdown);
+process.on('SIGTERM', shutdown);
 
 process.on('exit', () => {
     pm.shutdown();

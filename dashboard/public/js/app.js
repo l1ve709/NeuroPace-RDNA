@@ -6,8 +6,8 @@
             document.body.innerHTML = '<div style="color:white;padding:50px;font-family:sans-serif;"><h1>Fatal Error</h1><p>Vue.js failed to load. Please check your internet connection or server status.</p></div>';
             return;
         }
-        
-        const { createApp, ref, reactive, computed, onMounted, onUnmounted, nextTick, watch } = Vue;
+
+        const { createApp, ref, reactive, computed, onMounted, onUnmounted, nextTick } = Vue;
         console.log('[DASHBOARD] Initializing Vue application...');
         const vueApp = createApp({
     setup() {
@@ -34,18 +34,14 @@
         const actionLog = ref([]);
         const pipeStatus = reactive({});
         const allLogs = ref([]);
-        const logTab = ref('all');
         const logFilter = ref('all');
         const logAutoScroll = ref(true);
         const logViewer = ref(null);
         const MAX_LOGS = 1000;
         const filteredLogs = computed(() => {
             let logs = allLogs.value;
-            if (logTab.value !== 'all') {
-                logs = logs.filter(l => l.module === logTab.value);
-            }
             if (logFilter.value !== 'all') {
-                logs = logs.filter(l => l.level === logFilter.value);
+                logs = logs.filter(l => l.module === logFilter.value);
             }
             return logs.slice(-300);
         });
@@ -64,9 +60,14 @@
             return '#00e676';
         });
         const gaugeDash = computed(() => {
-            return `${prediction.probability * 236} 314`;
+            const circumference = 2 * Math.PI * 45;
+            return `${prediction.probability * circumference} ${circumference}`;
         });
         function connectWS() {
+            if (reconnectTimer) {
+                clearTimeout(reconnectTimer);
+                reconnectTimer = null;
+            }
             const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
             ws = new WebSocket(`${proto}//${location.host}`);
             ws.onopen = () => { wsConnected.value = true; };
@@ -108,9 +109,7 @@
                     if (msg.data.dpc_isr) Object.assign(dpc, msg.data.dpc_isr);
                     if (msg.data.frame_time_ms != null && msg.data.frame_time_ms > 0) {
                         frameTime.value = msg.data.frame_time_ms;
-                        if (fps.value === 0) {
-                            fps.value = 1000 / msg.data.frame_time_ms;
-                        }
+                        if (!(msg.data.gpu?.fps > 0)) fps.value = 1000 / msg.data.frame_time_ms;
                     }
                     if (charts.overview) charts.overview.push(msg.data.frame_time_ms || 0);
                     if (charts.frameTime) charts.frameTime.push(msg.data.frame_time_ms || 0);
@@ -126,7 +125,7 @@
                     prediction.inferenceMs = msg.data.inference_time_ms || 0;
                     if (msg.data.action && msg.data.action !== 'NO_ACTION') {
                         actionLog.value.unshift({
-                            time: new Date().toLocaleTimeString('en-US', { hour12: false }),
+                            time: new Date().toLocaleTimeString([], { hour12: false }),
                             action: msg.data.action,
                             probability: msg.data.prediction?.frame_drop_probability || 0,
                         });
@@ -138,25 +137,51 @@
                     break;
             }
         }
+        async function controlRequest(url) {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'X-NeuroPace-Control': '1' },
+            });
+            const body = await response.json().catch(() => ({}));
+            if (!response.ok || body.ok === false) {
+                throw new Error(body.error || `Request failed (${response.status})`);
+            }
+            return body;
+        }
         async function startModule(id) {
-            await fetch(`/api/modules/${id}/start`, { method: 'POST', headers: { 'X-NeuroPace-Control': '1' } });
+            return controlRequest(`/api/modules/${id}/start`);
         }
         async function stopModule(id) {
-            await fetch(`/api/modules/${id}/stop`, { method: 'POST', headers: { 'X-NeuroPace-Control': '1' } });
+            return controlRequest(`/api/modules/${id}/stop`);
         }
         async function restartModule(id) {
-            await fetch(`/api/modules/${id}/stop`, { method: 'POST', headers: { 'X-NeuroPace-Control': '1' } });
-            setTimeout(() => fetch(`/api/modules/${id}/start`, { method: 'POST', headers: { 'X-NeuroPace-Control': '1' } }), 1500);
+            if (modules[id]?.status === 'running') {
+                await stopModule(id);
+                await new Promise(resolve => setTimeout(resolve, 1500));
+            }
+            return startModule(id);
         }
         async function startAll() {
-            await fetch('/api/modules/start-all', { method: 'POST', headers: { 'X-NeuroPace-Control': '1' } });
+            return controlRequest('/api/modules/start-all');
         }
         async function stopAll() {
-            await fetch('/api/modules/stop-all', { method: 'POST', headers: { 'X-NeuroPace-Control': '1' } });
+            return controlRequest('/api/modules/stop-all');
         }
-        function toggleModule(id) {
-            if (modules[id]?.status === 'running') stopModule(id);
-            else startModule(id);
+        async function restartAll() {
+            await stopAll();
+            await new Promise(resolve => setTimeout(resolve, 1500));
+            return startAll();
+        }
+        async function toggleModule(id) {
+            try {
+                if (modules[id]?.status === 'running') await stopModule(id);
+                else await startModule(id);
+            } catch (error) {
+                allLogs.value.push({
+                    timestamp: new Date().toISOString(), module: id,
+                    level: 'error', message: error.message,
+                });
+            }
         }
         function formatUptime(ms) {
             if (!ms) return '--';
@@ -241,8 +266,8 @@
             page, wsConnected, currentTime, modules,
             gpu, dpc, prediction, frameTime, fps, actionLog, pipeStatus,
             allRunning, noneRunning, gaugeColor, gaugeDash,
-            allLogs, logTab, logFilter, logAutoScroll, logViewer, filteredLogs,
-            startModule, stopModule, restartModule, startAll, stopAll, toggleModule,
+            allLogs, logFilter, logAutoScroll, logViewer, filteredLogs,
+            startModule, stopModule, restartModule, startAll, stopAll, restartAll, toggleModule,
             formatUptime, getMetricStatus, clearLogs,
         };
     },

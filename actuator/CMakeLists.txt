@@ -33,7 +33,7 @@ if(NEUROPACE_USE_ADLX AND ADLX_SDK_DIR)
     message(STATUS "ADLX SDK found: ${ADLX_SDK_DIR}")
 else()
     set(ADLX_FOUND FALSE)
-    message(STATUS "ADLX SDK disabled — TGP control will use mock")
+    message(STATUS "GPU power writes are unavailable")
 endif()
 
 # ── Source Files ────────────────────────────────────────────────

@@ -13,7 +13,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from config import AIEngineConfig, PipeConfig, FeatureConfig, PredictorConfig, get_default_model_path
 from ipc_subscriber import IpcSubscriber
-from feature_engineer import FeatureEngineer
+from feature_engineer import FeatureEngineer, normalize_frame
 from predictor import Predictor, ActionType
 from ipc_action_publisher import IpcActionPublisher
 from online_trainer import OnlineTrainer
@@ -47,6 +47,7 @@ def _model_hot_reload_watcher(predictor: Predictor, model_path: Path, stop: thre
 def run(config: AIEngineConfig) -> int:
     """Main processing loop. Returns exit code."""
     global _shutdown_requested
+    _shutdown_requested = False
     model_path = Path(config.predictor.model_path) if config.predictor.model_path else get_default_model_path()
     logger = logging.getLogger("neuropace.ai.main")
     logger.info("Initializing components...")
@@ -87,9 +88,12 @@ def run(config: AIEngineConfig) -> int:
     last_status_time = time.time()
     status_interval = 5.0
     try:
-        for frame in subscriber.stream():
+        for frame in subscriber.stream(lambda: _shutdown_requested):
             if _shutdown_requested:
                 break
+            frame = normalize_frame(frame)
+            if frame is None:
+                continue
             frame_counter += 1
             features = feature_engineer.process(frame)
             if features is None:
@@ -100,6 +104,7 @@ def run(config: AIEngineConfig) -> int:
                 features=features,
                 gpu_tgp_w=float(gpu.get("gpu_tgp_w", 0)),
                 dpc_latency_us=float(dpc_isr.get("dpc_latency_us", 0.0)),
+                frame_time_ms=float(frame.get("frame_time_ms", 0.0)),
             )
             if frame_counter % config.predictor.prediction_interval_frames != 0:
                 continue
@@ -133,6 +138,7 @@ def run(config: AIEngineConfig) -> int:
         pass
     logger.info("Shutting down...")
     stop_event.set()
+    reload_thread.join(timeout=2.0)
     online_trainer.stop()
     subscriber.disconnect()
     publisher.stop()

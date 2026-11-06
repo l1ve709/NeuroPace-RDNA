@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NeuroPace RDNA | Control Center</title>
     <link rel="stylesheet" href="css/dashboard.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono&display=swap" rel="stylesheet">
     <!-- Local Vue fallback -->
     <script src="js/vue.global.prod.js"></script>
     <script>
@@ -36,7 +35,7 @@
                 </div>
                 <div class="brand-info">
                     <div class="brand-title">NEUROPACE <span>RDNA</span></div>
-                    <div class="brand-sub">Advanced Latency Management</div>
+                    <div class="brand-sub">Telemetry &amp; policy control</div>
                 </div>
             </div>
 
@@ -59,7 +58,7 @@
                 <div class="sidebar-section-title">Backend Modules</div>
                 <div v-for="(mod, id) in modules" :key="id" class="module-indicator">
                     <span :class="['status-dot-sm', mod.status]"></span>
-                    <span class="module-name-sm">{{ mod.name }}</span>
+                    <span class="module-name-sm">{{ mod.label }}</span>
                 </div>
             </div>
 
@@ -71,7 +70,7 @@
         <!-- Main Content -->
         <main class="main-content">
             <!-- Overview Page -->
-            <section v-if="page === 'overview'" class="page">
+            <section v-show="page === 'overview'" class="page">
                 <header class="page-header">
                     <h1>System Overview</h1>
                     <div class="header-actions">
@@ -88,13 +87,13 @@
                         <div class="gauge-container">
                             <svg class="gauge" viewBox="0 0 100 100">
                                 <circle class="gauge-track" cx="50" cy="50" r="45"></circle>
-                                <circle class="gauge-fill" cx="50" cy="50" r="45" 
+                                <circle class="gauge-fill" cx="50" cy="50" r="45"
                                         :style="{ 'stroke-dasharray': gaugeDash, 'stroke': gaugeColor }"></circle>
                                 <text x="50" y="50" class="gauge-value" style="font-size:20px; font-weight:800; text-anchor:middle; fill:white; transform:rotate(90deg); transform-origin:center;">{{ (prediction.probability * 100).toFixed(0) }}%</text>
                             </svg>
                         </div>
                         <div class="prediction-action" :class="'act-' + prediction.action.toLowerCase()">
-                            {{ prediction.action.replace('_', ' ') }}
+                            {{ prediction.action.replaceAll('_', ' ') }}
                         </div>
                     </div>
 
@@ -159,15 +158,15 @@
                             <canvas id="overviewChart"></canvas>
                         </div>
                     </div>
-                    
+
                     <div class="panel">
                         <div class="panel-header">
                             <h2>Recent Actions</h2>
                         </div>
                         <div class="action-list">
                             <div v-for="log in actionLog" :key="log.time" class="action-item" :class="'act-' + log.action.toLowerCase()">
-                                <span class="action-time">{{ log.time.split(' ')[1] }}</span>
-                                <span class="action-type">{{ log.action }}</span>
+                                <span class="action-time">{{ log.time }}</span>
+                                <span class="action-type">{{ log.action.replaceAll('_', ' ') }}</span>
                                 <span class="action-prob">{{ (log.probability * 100).toFixed(0) }}%</span>
                             </div>
                             <div v-if="actionLog.length === 0" class="action-empty">Waiting for inference...</div>
@@ -177,10 +176,10 @@
             </section>
 
             <!-- Performance Page -->
-            <section v-if="page === 'performance'" class="page">
+            <section v-show="page === 'performance'" class="page">
                 <header class="page-header">
                     <h1>Module Control & Performance</h1>
-                    <button @click="toggleModule('all')" class="btn btn-primary">RESTART ALL</button>
+                    <button @click="restartAll" class="btn btn-primary">RESTART ALL</button>
                 </header>
 
                 <div class="bottom-grid">
@@ -199,7 +198,7 @@
                         <div class="control-card-top">
                             <div class="control-icon">{{ mod.icon === 'sensor' ? '📡' : mod.icon === 'brain' ? '🧠' : '⚙️' }}</div>
                             <div class="control-info">
-                                <h3>{{ mod.name }}</h3>
+                                <h3>{{ mod.label }}</h3>
                                 <p>{{ mod.description }}</p>
                             </div>
                             <div class="control-toggle">
@@ -211,20 +210,20 @@
                         <div class="control-details">
                             <div class="detail-row"><span>Status</span><span :class="'status-' + mod.status">{{ mod.status.toUpperCase() }}</span></div>
                             <div class="detail-row"><span>PID</span><span>{{ mod.pid || 'N/A' }}</span></div>
-                            <div class="detail-row"><span>Uptime</span><span>{{ mod.uptime || '0s' }}</span></div>
+                            <div class="detail-row"><span>Uptime</span><span>{{ formatUptime(mod.uptime) }}</span></div>
                         </div>
                     </div>
                 </div>
             </section>
 
             <!-- Logs Page -->
-            <section v-if="page === 'logs'" class="page">
+            <section v-show="page === 'logs'" class="page">
                 <header class="page-header">
                     <h1>System Logs</h1>
                     <div class="header-actions">
                         <select v-model="logFilter" class="select-input">
                             <option value="all">All Modules</option>
-                            <option v-for="(mod, id) in modules" :key="id" :value="id">{{ mod.name }}</option>
+                            <option v-for="(mod, id) in modules" :key="id" :value="id">{{ mod.label }}</option>
                         </select>
                         <button @click="clearLogs" class="btn btn-ghost btn-sm">Clear</button>
                     </div>
@@ -257,7 +256,7 @@
             console.error('JS Error:', message, 'at', source, lineno, ':', colno);
             fetch('/api/debug-log', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', 'X-NeuroPace-Control': '1' },
                 body: JSON.stringify({
                     level: 'error',
                     message: message,

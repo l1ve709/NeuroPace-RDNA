@@ -16,12 +16,15 @@ class PipeBridge extends EventEmitter {
             bytesReceived: 0,
             reconnectCount: 0,
             lastMessageTime: null,
+            parseErrors: 0,
+            droppedOversizeFrames: 0,
         };
     }
     get connected() {
         return this._connected;
     }
     start() {
+        if (this._running) return;
         this._running = true;
         this._connect();
         console.log(`[PIPE:${this.label}] Bridge started -> ${this.pipePath}`);
@@ -36,7 +39,7 @@ class PipeBridge extends EventEmitter {
         console.log(`[PIPE:${this.label}] Bridge stopped`);
     }
     _connect() {
-        if (!this._running) return;
+        if (!this._running || this._client) return;
         try {
             this._client = net.connect({ path: this.pipePath }, () => {
                 this._connected = true;
@@ -59,12 +62,12 @@ class PipeBridge extends EventEmitter {
                     console.log(`[PIPE:${this.label}] Disconnected`);
                 }
                 this._connected = false;
+                this._client = null;
                 this.emit('disconnected');
                 this._scheduleReconnect();
             });
             this._client.on('end', () => {
                 this._connected = false;
-                this._scheduleReconnect();
             });
         } catch (err) {
             this._scheduleReconnect();
@@ -103,10 +106,14 @@ class PipeBridge extends EventEmitter {
                 this.stats.lastMessageTime = Date.now();
                 this.emit('message', message);
             } catch (e) {
+                this.stats.parseErrors++;
+                console.warn(`[PIPE:${this.label}] Dropped malformed JSON frame: ${e.message}`);
             }
         }
-        if (this._buffer.length > 500000) {
+        if (Buffer.byteLength(this._buffer, 'utf8') > 500000) {
             this._buffer = '';
+            this.stats.droppedOversizeFrames++;
+            console.warn(`[PIPE:${this.label}] Cleared an oversized unterminated frame`);
         }
     }
 }
