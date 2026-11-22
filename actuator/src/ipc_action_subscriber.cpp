@@ -1,6 +1,7 @@
 #include "ipc_action_subscriber.h"
 #include <iostream>
 #include <format>
+#include <algorithm>
 namespace neuropace {
 static constexpr DWORD kErrorFileNotFound = 2;
 static constexpr DWORD kErrorPipeBusy     = 231;
@@ -22,7 +23,6 @@ bool IpcActionSubscriber::Start() {
 }
 void IpcActionSubscriber::Stop() {
     m_running.store(false);
-    Disconnect();
     if (m_readThread.joinable()) {
         m_readThread.join();
     }
@@ -56,11 +56,22 @@ void IpcActionSubscriber::ReadLoop() {
                 continue;
             }
         }
+        // The reader thread owns the handle. Read only queued bytes so Stop()
+        // can join even when the server is connected but sends no commands.
+        DWORD available = 0;
+        if (!::PeekNamedPipe(m_pipeHandle, nullptr, 0, nullptr, &available, nullptr)) {
+            Disconnect();
+            continue;
+        }
+        if (available == 0) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            continue;
+        }
         DWORD bytesRead = 0;
         BOOL success = ::ReadFile(
             m_pipeHandle,
             buffer.data(),
-            static_cast<DWORD>(buffer.size()),
+            (std::min)(available, static_cast<DWORD>(buffer.size())),
             &bytesRead,
             nullptr     
         );
@@ -95,6 +106,7 @@ void IpcActionSubscriber::ReadLoop() {
             }
         }
     }
+    Disconnect();
 }
 bool IpcActionSubscriber::Connect() {
     m_pipeHandle = ::CreateFileW(
@@ -127,6 +139,10 @@ void IpcActionSubscriber::Disconnect() {
         m_pipeHandle = INVALID_HANDLE_VALUE;
     }
     m_ndjson.Reset();
+    {
+        std::unique_lock lock(m_queueMutex);
+        m_commandQueue = {};
+    }
     if (wasConnected) {
         // Count only real connection losses, not idle disconnects.
         std::unique_lock lock(m_statsMutex);

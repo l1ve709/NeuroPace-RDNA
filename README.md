@@ -80,11 +80,17 @@ Open http://127.0.0.1:3200. For real telemetry, replace the mock publisher with 
 python -m pytest -q ai-engine/tests
 Push-Location dashboard
 npm run check
+npm run test:integration
 npm audit --omit=dev
 Pop-Location
 ctest --test-dir telemetry/build -C Release --output-on-failure
 ctest --test-dir actuator/build -C Release --output-on-failure
 ```
+
+Generate the demonstration ONNX model before running the Windows integration test.
+It starts its own mock publisher, inference process and dashboard on isolated
+pipes and an ephemeral port, then checks that the pipeline recovers when the
+publisher restarts.
 
 See [session analysis](docs/session-analyzer.md), [benchmark requirements](docs/benchmarks.md), [implementation boundaries](docs/technical-manifesto.md), and [security](SECURITY.md).
 

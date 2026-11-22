@@ -17,7 +17,7 @@ app.use('/api', (req, res, next) => {
         let url;
         try { url = new URL(req.headers.origin); } catch { return res.sendStatus(403); }
         if (url.protocol !== 'http:' || !['localhost', '127.0.0.1'].includes(url.hostname) ||
-            Number(url.port || 80) !== Number(config.port || 3200)) return res.sendStatus(403);
+            Number(url.port || 80) !== server.address()?.port) return res.sendStatus(403);
     }
     if (!['GET', 'HEAD'].includes(req.method) && req.get('X-NeuroPace-Control') !== '1') return res.sendStatus(403);
     next();
@@ -44,7 +44,7 @@ app.use(express.static(publicPath));
 
 // Client-side logging endpoint
 app.post('/api/debug-log', (req, res) => {
-    const { level, message, details } = req.body;
+    const { level, message, details } = req.body ?? {};
     const safeLevel = typeof level === 'string' ? level.slice(0, 16).toUpperCase() : 'INFO';
     const safeMessage = typeof message === 'string' ? message.slice(0, 2000) : '(no message)';
     console.log(`[CLIENT-${safeLevel}] ${safeMessage}`, details || '');
@@ -92,7 +92,7 @@ function isAllowedBrowserRequest(headers) {
         const origin = new URL(headers.origin);
         return origin.protocol === 'http:' &&
             ['localhost', '127.0.0.1'].includes(origin.hostname) &&
-            Number(origin.port || 80) === Number(config.port || 3200);
+            Number(origin.port || 80) === server.address()?.port;
     } catch {
         return false;
     }
@@ -189,10 +189,11 @@ console.log('');
 telemetryBridge.start();
 predictionBridge.start();
 
-server.listen(config.port || 3200, config.host || '127.0.0.1', () => {
-    console.log(`[HTTP] Control Center: http://localhost:${config.port || 3200}`);
-    console.log(`[WS]   WebSocket:      ws://localhost:${config.port || 3200}`);
-    console.log(`[API]  REST API:       http://localhost:${config.port || 3200}/api/modules`);
+server.listen(config.port, config.host, () => {
+    const { port } = server.address();
+    console.log(`[HTTP] Control Center: http://localhost:${port}`);
+    console.log(`[WS]   WebSocket:      ws://localhost:${port}`);
+    console.log(`[API]  REST API:       http://localhost:${port}/api/modules`);
     console.log('');
     console.log('Press Ctrl+C to stop');
     console.log('');
@@ -202,6 +203,7 @@ server.listen(config.port || 3200, config.host || '127.0.0.1', () => {
         process.exit(1);
     } else {
         console.error(`[FATAL] Server error:`, err);
+        process.exit(1);
     }
 });
 
@@ -214,6 +216,7 @@ function shutdown() {
     pm.shutdown();
     telemetryBridge.stop();
     predictionBridge.stop();
+    for (const client of wss.clients) client.terminate();
     wss.close();
     server.close(() => {
         console.log('[MAIN] Control center stopped');

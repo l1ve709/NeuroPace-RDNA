@@ -40,7 +40,18 @@ void test_timestamp() {
     assert(t2 > t1);
     std::cout << "[TEST] test_timestamp PASSED (delta: " << (t2 - t1) << " µs)\n";
 }
-int main() {
+int main(int argc, char**) {
+    if (argc > 1) {
+        neuropace::EtwCollector collector;
+        if (collector.Start()) {
+            collector.Stop();
+            return 0;
+        }
+        const auto error = collector.GetLastError();
+        std::cerr << error << '\n';
+        return error.starts_with("StartTraceW failed: error 5 ") ||
+               error.starts_with("StartTraceW failed: error 1314 ") ? 77 : 1;
+    }
     std::cout << "========================================\n";
     std::cout << "  NeuroPace RDNA — ETW Collector Tests\n";
     std::cout << "========================================\n\n";

@@ -1,4 +1,5 @@
 import json
+import os
 import time
 import signal
 import sys
@@ -7,7 +8,7 @@ import numpy as np
 import win32pipe
 import win32file
 import pywintypes
-PIPE_NAME = r'\\.\pipe\neuropace-telemetry'
+PIPE_NAME = os.environ.get("NEUROPACE_TELEMETRY_PIPE", r'\\.\pipe\neuropace-telemetry')
 PUBLISH_RATE_HZ = 100
 PUBLISH_INTERVAL = 1.0 / PUBLISH_RATE_HZ
 shutdown = False

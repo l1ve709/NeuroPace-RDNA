@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node server/index.js",
     "dev": "node server/index.js",
+    "test:integration": "node --test tests/pipeline.test.js",
     "check": "node --check server/index.js && node --check server/process-manager.js && node --check server/pipe-bridge.js && node --check public/js/app.js && node --check public/js/chart-engine.js"
   },
   "dependencies": {
