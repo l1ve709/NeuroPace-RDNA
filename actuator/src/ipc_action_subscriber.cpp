@@ -1,7 +1,6 @@
 #include "ipc_action_subscriber.h"
 #include <iostream>
 #include <format>
-#include <algorithm>
 namespace neuropace {
 static constexpr DWORD kErrorFileNotFound = 2;
 static constexpr DWORD kErrorPipeBusy     = 231;
@@ -45,6 +44,12 @@ std::string IpcActionSubscriber::GetLastError() const {
 }
 void IpcActionSubscriber::ReadLoop() {
     std::vector<char> buffer(m_config.read_buffer_size);
+    HANDLE readEvent = ::CreateEventW(nullptr, TRUE, FALSE, nullptr);
+    if (!readEvent) {
+        SetError(std::format("CreateEvent failed: {}", ::GetLastError()));
+        m_running.store(false);
+        return;
+    }
     while (m_running.load()) {
         if (!m_connected.load()) {
             if (!Connect()) {
@@ -56,25 +61,27 @@ void IpcActionSubscriber::ReadLoop() {
                 continue;
             }
         }
-        // The reader thread owns the handle. Read only queued bytes so Stop()
-        // can join even when the server is connected but sends no commands.
-        DWORD available = 0;
-        if (!::PeekNamedPipe(m_pipeHandle, nullptr, 0, nullptr, &available, nullptr)) {
-            Disconnect();
-            continue;
-        }
-        if (available == 0) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(10));
-            continue;
-        }
+        OVERLAPPED read{};
+        read.hEvent = readEvent;
+        ::ResetEvent(readEvent);
         DWORD bytesRead = 0;
         BOOL success = ::ReadFile(
             m_pipeHandle,
             buffer.data(),
-            (std::min)(available, static_cast<DWORD>(buffer.size())),
-            &bytesRead,
-            nullptr     
+            static_cast<DWORD>(buffer.size()),
+            nullptr,
+            &read
         );
+        if (success || ::GetLastError() == ERROR_IO_PENDING) {
+            if (!success) {
+                while (m_running.load() && ::WaitForSingleObject(readEvent, 25) == WAIT_TIMEOUT) {}
+                if (!m_running.load()) {
+                    ::CancelIoEx(m_pipeHandle, &read);
+                }
+            }
+            // Drain the operation before releasing its stack storage and pipe handle.
+            success = ::GetOverlappedResult(m_pipeHandle, &read, &bytesRead, TRUE);
+        }
         if (!success || bytesRead == 0) {
             DWORD err = ::GetLastError();
             if (err == kErrorBrokenPipe || err == kErrorNoData) {
@@ -107,6 +114,7 @@ void IpcActionSubscriber::ReadLoop() {
         }
     }
     Disconnect();
+    ::CloseHandle(readEvent);
 }
 bool IpcActionSubscriber::Connect() {
     m_pipeHandle = ::CreateFileW(
@@ -115,7 +123,7 @@ bool IpcActionSubscriber::Connect() {
         0,
         nullptr,
         OPEN_EXISTING,
-        0,
+        FILE_FLAG_OVERLAPPED,
         nullptr
     );
     if (m_pipeHandle == INVALID_HANDLE_VALUE) {

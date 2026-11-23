@@ -76,6 +76,17 @@ Open http://127.0.0.1:3200. For real telemetry, replace the mock publisher with 
 
 ## Verification
 
+Run the Windows regression suite from the repository root:
+
+```powershell
+.\scripts\test-full.ps1
+```
+
+Approve the UAC prompt for the live ETW capture. The other checks run as your
+normal user. Pass `-AdlxSdkDir` to also build the ADLX telemetry variant, or
+`-CmakePrefixPath` to locate an existing CMake installation of nlohmann-json.
+The suite saves transcripts in `build/full-regression/logs` by default.
+
 ```powershell
 python -m pytest -q ai-engine/tests
 Push-Location dashboard
