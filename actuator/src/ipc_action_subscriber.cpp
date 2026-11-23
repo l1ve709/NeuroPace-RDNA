@@ -22,7 +22,6 @@ bool IpcActionSubscriber::Start() {
 }
 void IpcActionSubscriber::Stop() {
     m_running.store(false);
-    Disconnect();
     if (m_readThread.joinable()) {
         m_readThread.join();
     }
@@ -45,6 +44,12 @@ std::string IpcActionSubscriber::GetLastError() const {
 }
 void IpcActionSubscriber::ReadLoop() {
     std::vector<char> buffer(m_config.read_buffer_size);
+    HANDLE readEvent = ::CreateEventW(nullptr, TRUE, FALSE, nullptr);
+    if (!readEvent) {
+        SetError(std::format("CreateEvent failed: {}", ::GetLastError()));
+        m_running.store(false);
+        return;
+    }
     while (m_running.load()) {
         if (!m_connected.load()) {
             if (!Connect()) {
@@ -56,14 +61,27 @@ void IpcActionSubscriber::ReadLoop() {
                 continue;
             }
         }
+        OVERLAPPED read{};
+        read.hEvent = readEvent;
+        ::ResetEvent(readEvent);
         DWORD bytesRead = 0;
         BOOL success = ::ReadFile(
             m_pipeHandle,
             buffer.data(),
             static_cast<DWORD>(buffer.size()),
-            &bytesRead,
-            nullptr     
+            nullptr,
+            &read
         );
+        if (success || ::GetLastError() == ERROR_IO_PENDING) {
+            if (!success) {
+                while (m_running.load() && ::WaitForSingleObject(readEvent, 25) == WAIT_TIMEOUT) {}
+                if (!m_running.load()) {
+                    ::CancelIoEx(m_pipeHandle, &read);
+                }
+            }
+            // Drain the operation before releasing its stack storage and pipe handle.
+            success = ::GetOverlappedResult(m_pipeHandle, &read, &bytesRead, TRUE);
+        }
         if (!success || bytesRead == 0) {
             DWORD err = ::GetLastError();
             if (err == kErrorBrokenPipe || err == kErrorNoData) {
@@ -95,6 +113,8 @@ void IpcActionSubscriber::ReadLoop() {
             }
         }
     }
+    Disconnect();
+    ::CloseHandle(readEvent);
 }
 bool IpcActionSubscriber::Connect() {
     m_pipeHandle = ::CreateFileW(
@@ -103,7 +123,7 @@ bool IpcActionSubscriber::Connect() {
         0,
         nullptr,
         OPEN_EXISTING,
-        0,
+        FILE_FLAG_OVERLAPPED,
         nullptr
     );
     if (m_pipeHandle == INVALID_HANDLE_VALUE) {
@@ -127,6 +147,10 @@ void IpcActionSubscriber::Disconnect() {
         m_pipeHandle = INVALID_HANDLE_VALUE;
     }
     m_ndjson.Reset();
+    {
+        std::unique_lock lock(m_queueMutex);
+        m_commandQueue = {};
+    }
     if (wasConnected) {
         // Count only real connection losses, not idle disconnects.
         std::unique_lock lock(m_statsMutex);

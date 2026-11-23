@@ -118,6 +118,8 @@ if(NEUROPACE_BUILD_TESTS)
         target_compile_options(test_etw PRIVATE -Wall -Wextra -Wpedantic -UNDEBUG)
     endif()
     add_test(NAME etw_collector COMMAND test_etw)
+    add_test(NAME etw_session_start COMMAND test_etw --start)
+    set_tests_properties(etw_session_start PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 10)
 
     add_executable(test_adlx_mock
         tests/test_adlx_mock.cpp

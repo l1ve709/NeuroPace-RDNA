@@ -8,10 +8,10 @@ static const GUID PerfInfoGuid = {
     0xCE1DBFB4, 0x137E, 0x4DA6,
     { 0x87, 0xB0, 0x3F, 0x59, 0xAA, 0x10, 0x2C, 0xBC }
 };
-static constexpr UCHAR kOpcodeDpc         = 66;
+static constexpr UCHAR kOpcodeThreadDpc   = 66;
 static constexpr UCHAR kOpcodeIsr         = 67;
-static constexpr UCHAR kOpcodeDpcTimer    = 68;
-static constexpr UCHAR kOpcodeIsrChained  = 69;
+static constexpr UCHAR kOpcodeDpc         = 68;
+static constexpr UCHAR kOpcodeDpcTimer    = 69;
 #pragma pack(push, 1)
 struct DpcEventData {
     ULONG64   InitialTime;
@@ -116,7 +116,9 @@ bool EtwCollector::StartTraceSession() {
     props->Wnode.BufferSize    = propSize;
     props->Wnode.Flags         = WNODE_FLAG_TRACED_GUID;
     props->Wnode.ClientContext = 1;
-    props->Wnode.Guid          = SystemTraceControlGuid;
+    // A named system logger must use its own session GUID.
+    props->Wnode.Guid          = {0x801357a9, 0xe3fe, 0x4a10,
+                                 {0xb6, 0x55, 0x43, 0x74, 0x15, 0x5a, 0x9f, 0xd4}};
     props->LogFileMode         = EVENT_TRACE_REAL_TIME_MODE | EVENT_TRACE_SYSTEM_LOGGER_MODE;
     props->LoggerNameOffset    = sizeof(EVENT_TRACE_PROPERTIES);
     props->FlushTimer          = m_config.flush_timer_ms;
@@ -166,12 +168,12 @@ void EtwCollector::ProcessEvent(PEVENT_RECORD pEvent) {
     }
     const UCHAR opcode = pEvent->EventHeader.EventDescriptor.Opcode;
     switch (opcode) {
+        case kOpcodeThreadDpc:
         case kOpcodeDpc:
         case kOpcodeDpcTimer:
             ProcessDpcEvent(pEvent);
             break;
         case kOpcodeIsr:
-        case kOpcodeIsrChained:
             ProcessIsrEvent(pEvent);
             break;
         default:

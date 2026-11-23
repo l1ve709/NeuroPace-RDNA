@@ -1,7 +1,7 @@
 from __future__ import annotations
 import sys
 import time
-import pickle
+from tempfile import TemporaryDirectory
 from pathlib import Path
 import numpy as np
 import pandas as pd
@@ -150,7 +150,6 @@ def main() -> None:
     project_root = Path(__file__).resolve().parent.parent
     dataset_path = project_root / "training" / "dataset" / "synthetic_telemetry.csv"
     model_dir = project_root / "models"
-    pkl_path = model_dir / "frame_drop_rf.pkl"
     onnx_path = model_dir / "frame_drop_rf.onnx"
     print("=" * 60)
     print("  NeuroPace RDNA — Random Forest Training Pipeline")
@@ -171,13 +170,13 @@ def main() -> None:
     )
     print(f"  Train: {len(y_train)}  Test: {len(y_test)}")
     model = train_model(X_train, y_train)
-    metrics = evaluate_model(model, X_test, y_test)
+    evaluate_model(model, X_test, y_test)
     model_dir.mkdir(parents=True, exist_ok=True)
-    with open(pkl_path, "wb") as f:
-        pickle.dump(model, f)
-    print(f"\n  sklearn model saved: {pkl_path.name} ({pkl_path.stat().st_size / 1024:.1f} KB)")
-    if export_to_onnx(model, onnx_path):
-        validate_onnx(model, onnx_path, X_test)
+    with TemporaryDirectory(dir=model_dir) as staging:
+        candidate = Path(staging) / onnx_path.name
+        if not export_to_onnx(model, candidate) or not validate_onnx(model, candidate, X_test):
+            sys.exit(1)
+        candidate.replace(onnx_path)
     print("\n" + "=" * 60)
     print("  Training pipeline complete!")
     print("=" * 60)

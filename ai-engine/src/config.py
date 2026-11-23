@@ -1,5 +1,14 @@
 from dataclasses import dataclass, field
 from pathlib import Path
+from os import environ
+
+def default_pipes() -> "PipeConfig":
+    defaults = PipeConfig()
+    return PipeConfig(
+        telemetry_pipe=environ.get("NEUROPACE_TELEMETRY_PIPE", defaults.telemetry_pipe),
+        prediction_pipe=environ.get("NEUROPACE_PREDICTION_PIPE", defaults.prediction_pipe),
+        action_pipe=environ.get("NEUROPACE_ACTION_PIPE", defaults.action_pipe),
+    )
 @dataclass(frozen=True)
 class PipeConfig:
     """Named Pipe connection settings."""
@@ -56,7 +65,7 @@ class TrainingConfig:
 @dataclass(frozen=True)
 class AIEngineConfig:
     """Top-level configuration aggregating all sub-configs."""
-    pipes: PipeConfig = field(default_factory=PipeConfig)
+    pipes: PipeConfig = field(default_factory=default_pipes)
     features: FeatureConfig = field(default_factory=FeatureConfig)
     predictor: PredictorConfig = field(default_factory=PredictorConfig)
     online_learning: OnlineLearningConfig = field(default_factory=OnlineLearningConfig)

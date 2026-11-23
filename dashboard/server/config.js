@@ -1,14 +1,14 @@
 module.exports = {
-    port: 3200,
+    port: Number(process.env.NEUROPACE_PORT ?? 3200),
     host: '127.0.0.1',
     pipes: {
         telemetry: {
-            path: String.raw`\\.\pipe\neuropace-telemetry`,
+            path: process.env.NEUROPACE_TELEMETRY_PIPE || String.raw`\\.\pipe\neuropace-telemetry`,
             label: 'Telemetry',
             reconnectMs: 2000,
         },
         prediction: {
-            path: String.raw`\\.\pipe\neuropace-prediction`,
+            path: process.env.NEUROPACE_PREDICTION_PIPE || String.raw`\\.\pipe\neuropace-prediction`,
             label: 'AI Prediction',
             reconnectMs: 2000,
         },

@@ -109,7 +109,9 @@ def run(config: AIEngineConfig) -> int:
             if frame_counter % config.predictor.prediction_interval_frames != 0:
                 continue
             result = predictor.predict(features)
-            prediction_counter += 1
+            if predictor.stats.total_predictions == prediction_counter:
+                continue
+            prediction_counter = predictor.stats.total_predictions
             result_dict = result.to_dict()
             if result.action != ActionType.NO_ACTION:
                 publisher.publish_action(result_dict)
