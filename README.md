@@ -76,6 +76,9 @@ Open http://127.0.0.1:3200. For real telemetry, replace the mock publisher with 
 
 ## Verification
 
+For the read-only capture and report workflow, see [record and compare sessions](docs/session-analyzer.md).
+The launcher and dashboard bulk startup leave the experimental actuator disabled by default.
+
 Run the Windows regression suite from the repository root:
 
 ```powershell

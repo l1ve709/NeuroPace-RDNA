@@ -27,6 +27,34 @@ spikes, median/mean/P95/P99 frametime and FPS calculated from the durations.
 
 ## PresentMon capture
 
+On Windows the capture command can start PresentMon and an optional NeuroPace
+telemetry sampler together. Provide a running game's PID and a new output
+directory. Use the ADLX build for supported Radeon GPU metrics. Run the shell
+with administrator privileges for kernel ETW events.
+
+```powershell
+python ai-engine/src/capture_session.py --pid 1234 --presentmon C:/Tools/PresentMon.exe --telemetry telemetry/build/Release/neuropace-telemetry.exe --seconds 30 --output-dir sessions/run-01
+```
+
+The session directory retains raw frame and telemetry CSVs, logs and the JSON
+report. Both captures use the Windows performance-counter clock. Telemetry is
+sampled roughly every 33 ms, so nearby samples provide context rather than exact
+GPU or kernel event times. Omit `--telemetry` for a frames-only baseline.
+If the game uses multiple swap chains, keep the raw files and re-run the
+offline command with `--pid` and `--swap-chain`. For these same-session files use
+`--telemetry-offset-ms 0`.
+
+Compare two reports after measuring a repeatable scene with consistent settings:
+
+```powershell
+python ai-engine/src/compare_sessions.py sessions/baseline/report.json sessions/run-01/report.json
+```
+
+The comparison checks the application and metric and gives the observed deltas.
+Use alternating, repeated runs before drawing conclusions about overhead.
+
+## Import an existing PresentMon CSV
+
 Pass one CSV from the [PresentMon console](https://github.com/GameTechDev/PresentMon/blob/main/README-ConsoleApplication.md).
 When multiple streams match, the CLI lists their application, PID and swap-chain
 address. Select the game and its intended swap chain before comparing results.

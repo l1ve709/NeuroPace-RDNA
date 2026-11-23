@@ -1,0 +1,54 @@
+name: Windows regression
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  windows-regression:
+    runs-on: windows-2022
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: dashboard/package-lock.json
+      - name: Install Python and dashboard dependencies
+        run: |
+          python -m pip install -r ai-engine/requirements.txt pytest
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          npm --prefix dashboard ci --ignore-scripts
+      - name: Build and test native modules
+        run: |
+          git clone --depth 1 --branch v3.12.0 https://github.com/nlohmann/json.git build/json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $prefix = Join-Path $PWD 'build/json-install'
+          cmake -S build/json -B build/json-build "-DCMAKE_INSTALL_PREFIX=$prefix" "-DJSON_BuildTests=OFF"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cmake --install build/json-build
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          foreach ($module in 'telemetry', 'actuator') {
+            cmake -S $module -B "build/$module" "-DCMAKE_PREFIX_PATH=$prefix"
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            cmake --build "build/$module" --config Release --parallel 2
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            ctest --test-dir "build/$module" -C Release --output-on-failure -E '^etw_session_start$' --no-tests=error
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+      - name: Test session analysis and telemetry capture
+        run: |
+          $env:NEUROPACE_TEST_TELEMETRY = (Resolve-Path build/telemetry/Release/neuropace-telemetry.exe).Path
+          python -m pytest -q ai-engine/tests
+      - name: Run mock pipeline and dashboard checks
+        run: |
+          npm --prefix dashboard run check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test-integration.ps1

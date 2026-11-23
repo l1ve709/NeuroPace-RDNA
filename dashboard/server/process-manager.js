@@ -58,7 +58,7 @@ const MODULE_DEFINITIONS = {
         args: [],
         cwd: path.dirname(ACTUATOR_EXE),
         icon: 'gear',
-        optional: false,
+        optional: true,
     },
 };
 class ProcessManager extends EventEmitter {

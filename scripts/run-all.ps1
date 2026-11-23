@@ -20,6 +20,7 @@ param(
     [switch]$Mock,
     [switch]$NoDashboard,
     [switch]$NoActuator,
+    [switch]$EnableActuator,
     [string]$BuildType = "Release"
 )
 
@@ -124,7 +125,7 @@ Start-Sleep -Seconds 1
 
 # ── Module 3: Actuator ─────────────────────────────────────────────────────
 
-if (-not $NoActuator) {
+if ($EnableActuator -and -not $NoActuator) {
     $actuatorExe = Join-Path $ProjectRoot "actuator\build\$BuildType\neuropace-actuator.exe"
     if (Test-Path $actuatorExe) {
         $actuatorProc = Start-Module `
