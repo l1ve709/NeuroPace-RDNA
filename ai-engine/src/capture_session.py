@@ -10,7 +10,7 @@ import subprocess
 import time
 from uuid import uuid4
 
-from session_analyzer import load_presentmon, presentmon_report
+from session_analyzer import QPC_MS_COLUMNS, load_presentmon, presentmon_report
 
 
 def stop_sampler(process: subprocess.Popen) -> None:
@@ -66,7 +66,7 @@ def capture(args: argparse.Namespace) -> dict:
                 stop_sampler(sampler)
 
     frames, stream = load_presentmon(frames_path, "displayed", args.pid, args.swap_chain)
-    if stream["timestamp_column"] != "cpustartqpctime" or not stream["display_offset_column"]:
+    if stream["timestamp_column"] not in QPC_MS_COLUMNS or not stream["display_offset_column"]:
         raise ValueError("Capture did not include QPC milliseconds and display offsets")
     report = presentmon_report(frames, stream, args.threshold_ms,
                                sensor_path if args.telemetry else None, 0, args.context_ms)

@@ -90,3 +90,18 @@ def test_presentmon_raw_qpc_and_aligned_context(tmp_path):
     assert context["gpu"]["nearest_before"]["gpu_temp_c"] == 67
     assert context["gpu"]["nearest_at_or_after"]["offset_ms"] == 2
     assert context["etw"]["status"] == "outside_window"
+
+
+@pytest.mark.parametrize("header", ["CPUStartQPCTime", "CPUStartQPCTimeInMs"])
+def test_presentmon_accepts_both_qpc_millisecond_headers(tmp_path, header):
+    capture = tmp_path / "capture.csv"
+    capture.write_text(
+        f"Application,ProcessID,SwapChainAddress,{header},DisplayLatency,DisplayedTime\n"
+        "game.exe,123,0x1,1100.5,4.5,16\n",
+        encoding="utf-8",
+    )
+
+    frames, stream = load_presentmon(capture, "displayed", 123, None)
+
+    assert frames == [Frame(1105, 16)]
+    assert stream["timestamp_column"] == header.lower()

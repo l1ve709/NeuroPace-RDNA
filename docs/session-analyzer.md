@@ -82,7 +82,7 @@ For `DisplayedTime` it marks the beginning. Without an offset column the report
 retains the row timestamp and records that the offset was unavailable.
 
 The importer accepts `TimeInSeconds`, `TimeInMs`, `CPUStartTime` and
-`CPUStartQPCTime`. For raw `CPUStartQPC` or `TimeInQPC` supply the originating
+`CPUStartQPCTime` or `CPUStartQPCTimeInMs`. For raw `CPUStartQPC` or `TimeInQPC` supply the originating
 capture machine's counter frequency with `--qpc-frequency-hz`.
 
 ## Optional GPU and ETW context

@@ -83,10 +83,11 @@ METRIC_COLUMNS = {
     "displayed": ("displayedtime", "msbetweendisplaychange"),
     "cpu": ("frametime", "msbetweenappstart"),
 }
+QPC_MS_COLUMNS = ("cpustartqpctime", "cpustartqpctimeinms")
 TIME_COLUMNS = (
     ("timeinms", 1.0),
     ("timeinseconds", 1000.0),
-    ("cpustartqpctime", 1.0),
+    *((column, 1.0) for column in QPC_MS_COLUMNS),
     ("cpustarttime", 1.0),
 )
 SENSOR_FIELDS = {
